@@ -1,6 +1,6 @@
 """
 RETROLENS — High-Performance Pure Camera Filter App (Streamlit & Desktop)
-Clean, Minimalist, Full-screen & 60 FPS Optimized
+Clean, Minimalist, 60 FPS, Accurately Aligned 21 Filters
 """
 
 import sys
@@ -28,7 +28,7 @@ def run_streamlit_app():
         initial_sidebar_state="collapsed"
     )
 
-    # Hide all Streamlit UI for a pure, clean camera screen
+    # Fullscreen clean layout without any distractions
     st.markdown("""
     <style>
     header, footer, #MainMenu, [data-testid="stSidebar"], [data-testid="stToolbar"], .stDeployButton {
@@ -103,7 +103,6 @@ def run_streamlit_app():
           display: none;
         }
 
-        /* Overlay jika kamera perlu diaktifkan */
         #tap-overlay {
           position: absolute;
           inset: 0;
@@ -127,11 +126,6 @@ def run_streamlit_app():
           letter-spacing: 0.5px;
           border: none;
           cursor: pointer;
-          transform: scale(1);
-          transition: transform 0.2s ease;
-        }
-        #tap-overlay .glow-btn:hover {
-          transform: scale(1.06);
         }
         #tap-overlay .hint {
           color: #64748b;
@@ -179,7 +173,7 @@ def run_streamlit_app():
         const ctx = canvas.getContext('2d', { alpha: false });
         const tapOverlay = document.getElementById('tap-overlay');
 
-        // Offscreen canvas untuk fast filter processing
+        // Offscreen buffers
         const offCanvas = document.createElement('canvas');
         const offCtx = offCanvas.getContext('2d', { willReadFrequently: true });
         const miniCanvas = document.createElement('canvas');
@@ -205,71 +199,74 @@ def run_streamlit_app():
           ctx.fillText(text, x, y);
         }
 
-        // Fast Filter Engine (High FPS)
-        function applyFilterFast(filterName, rx, ry, rw, rh) {
+        // Apply filter directly from the already-mirrored screen canvas for 100% accurate alignment
+        function applyFilterAccurate(filterName, rx, ry, rw, rh) {
           offCanvas.width = rw;
           offCanvas.height = rh;
 
+          // MIRROR filter: Flip the portal area horizontally
           if (filterName === "MIRROR") {
             offCtx.save();
             offCtx.translate(rw, 0);
             offCtx.scale(-1, 1);
-            offCtx.drawImage(video, rx, ry, rw, rh, 0, 0, rw, rh);
+            offCtx.drawImage(canvas, rx, ry, rw, rh, 0, 0, rw, rh);
             offCtx.restore();
             return offCanvas;
           }
 
+          // Native Canvas Filters (Fast 60fps)
           if (filterName === "BLUR") {
-            offCtx.filter = 'blur(10px)';
-            offCtx.drawImage(video, rx, ry, rw, rh, 0, 0, rw, rh);
+            offCtx.filter = 'blur(12px)';
+            offCtx.drawImage(canvas, rx, ry, rw, rh, 0, 0, rw, rh);
             offCtx.filter = 'none';
             return offCanvas;
           }
 
           if (filterName === "MONO") {
             offCtx.filter = 'grayscale(100%)';
-            offCtx.drawImage(video, rx, ry, rw, rh, 0, 0, rw, rh);
+            offCtx.drawImage(canvas, rx, ry, rw, rh, 0, 0, rw, rh);
             offCtx.filter = 'none';
             return offCanvas;
           }
 
           if (filterName === "INVERT") {
             offCtx.filter = 'invert(100%)';
-            offCtx.drawImage(video, rx, ry, rw, rh, 0, 0, rw, rh);
+            offCtx.drawImage(canvas, rx, ry, rw, rh, 0, 0, rw, rh);
             offCtx.filter = 'none';
             return offCanvas;
           }
 
           if (filterName === "SEPIA") {
-            offCtx.filter = 'sepia(100%)';
-            offCtx.drawImage(video, rx, ry, rw, rh, 0, 0, rw, rh);
+            offCtx.filter = 'sepia(100%) saturate(140%)';
+            offCtx.drawImage(canvas, rx, ry, rw, rh, 0, 0, rw, rh);
             offCtx.filter = 'none';
             return offCanvas;
           }
 
           if (filterName === "PIXELATE") {
-            let pw = Math.max(1, Math.floor(rw / 12));
-            let ph = Math.max(1, Math.floor(rh / 12));
+            let pw = Math.max(2, (rw / 14) | 0);
+            let ph = Math.max(2, (rh / 14) | 0);
             miniCanvas.width = pw; miniCanvas.height = ph;
-            miniCtx.drawImage(video, rx, ry, rw, rh, 0, 0, pw, ph);
+            miniCtx.drawImage(canvas, rx, ry, rw, rh, 0, 0, pw, ph);
             offCtx.imageSmoothingEnabled = false;
             offCtx.drawImage(miniCanvas, 0, 0, pw, ph, 0, 0, rw, rh);
             offCtx.imageSmoothingEnabled = true;
             return offCanvas;
           }
 
-          offCtx.drawImage(video, rx, ry, rw, rh, 0, 0, rw, rh);
+          // Sample exact mirrored frame from screen
+          offCtx.drawImage(canvas, rx, ry, rw, rh, 0, 0, rw, rh);
           let imgData = offCtx.getImageData(0, 0, rw, rh);
           let d = imgData.data;
           let len = d.length;
 
           if (filterName === "DUAL-TONE") {
             for (let i = 0; i < len; i += 4) {
-              let g = (d[i] + d[i+1] + d[i+2]) >> 2;
-              if (g > 32) {
-                d[i] = 255; d[i+1] = 165; d[i+2] = 0;
+              let g = (d[i] + d[i+1] + d[i+2]) / 3;
+              if (g > 120) {
+                d[i] = 255; d[i+1] = 150; d[i+2] = 0;   // Vibrant Orange
               } else {
-                d[i] = 255; d[i+1] = 20; d[i+2] = 147;
+                d[i] = 255; d[i+1] = 20; d[i+2] = 160;  // Deep Magenta
               }
             }
           } else if (filterName === "THERMAL") {
@@ -280,19 +277,20 @@ def run_streamlit_app():
               d[i+2] = Math.min(255, Math.max(0, 255 * (1.5 - Math.abs(4 * v - 1))));
             }
           } else if (filterName === "SKETCH") {
-            for (let y = 0; y < rh - 1; y += 2) {
-              for (let x = 0; x < rw - 1; x += 2) {
-                let idx = (y * rw + x) << 2;
-                let next = ((y + 1) * rw + (x + 1)) << 2;
+            for (let y = 0; y < rh - 1; y++) {
+              let row = (y * rw) << 2;
+              let nextRow = ((y + 1) * rw) << 2;
+              for (let x = 0; x < rw - 1; x++) {
+                let idx = row + (x << 2);
+                let next = nextRow + ((x + 1) << 2);
                 let g1 = (d[idx] + d[idx+1] + d[idx+2]) / 3;
                 let g2 = (d[next] + d[next+1] + d[next+2]) / 3;
                 let diff = 255 - Math.min(255, Math.abs(g1 - g2) * 6);
                 d[idx] = d[idx+1] = d[idx+2] = diff;
-                d[idx+4] = d[idx+5] = d[idx+6] = diff;
               }
             }
           } else if (filterName === "GLITCH") {
-            let shift = Math.max(5, (rw / 18) | 0);
+            let shift = Math.max(6, (rw / 18) | 0);
             let copy = new Uint8ClampedArray(d);
             for (let y = 0; y < rh; y++) {
               let row = (y * rw) << 2;
@@ -326,7 +324,7 @@ def run_streamlit_app():
           } else if (filterName === "GALAXY") {
             offCtx.fillStyle = "#140a22";
             offCtx.fillRect(0, 0, rw, rh);
-            for (let i = 0; i < 40; i++) {
+            for (let i = 0; i < 45; i++) {
               let sx = ((Math.sin(i * 45 + Date.now() * 0.001) * 0.5 + 0.5) * rw) | 0;
               let sy = ((Math.cos(i * 25 + Date.now() * 0.001) * 0.5 + 0.5) * rh) | 0;
               offCtx.fillStyle = (i % 2 === 0) ? "#c864ff" : "#00e5a0";
@@ -335,7 +333,7 @@ def run_streamlit_app():
               offCtx.fill();
             }
             offCtx.globalAlpha = 0.45;
-            offCtx.drawImage(video, rx, ry, rw, rh, 0, 0, rw, rh);
+            offCtx.drawImage(canvas, rx, ry, rw, rh, 0, 0, rw, rh);
             offCtx.globalAlpha = 1.0;
             return offCanvas;
           } else if (filterName === "VINTAGE") {
@@ -498,7 +496,7 @@ def run_streamlit_app():
           const w = canvas.width;
           const h = canvas.height;
 
-          // Flip video horizontal (Mirror)
+          // 1. Draw mirrored full camera frame to the main canvas
           ctx.save();
           ctx.translate(w, 0);
           ctx.scale(-1, 1);
@@ -580,7 +578,7 @@ def run_streamlit_app():
               gestureTriggered = false;
             }
 
-            // Gambar Portal Polygon
+            // Portal Polygon
             if (ptsPortal.length >= 4) {
               ptsPortal.sort((a, b) => a.y - b.y);
               let topPts = ptsPortal.slice(0, 2).sort((a, b) => a.x - b.x);
@@ -595,7 +593,7 @@ def run_streamlit_app():
               let rh = maxY - minY;
 
               if (rw > 20 && rh > 20) {
-                let filteredCanvas = applyFilterFast(filterName, minX, minY, rw, rh);
+                let filteredCanvas = applyFilterAccurate(filterName, minX, minY, rw, rh);
 
                 ctx.save();
                 ctx.beginPath();
@@ -644,7 +642,6 @@ def run_streamlit_app():
             locateFile: (file) => `https://cdn.jsdelivr.net/npm/@mediapipe/hands/${file}`
           });
 
-          // Lite model = 60 FPS in browser!
           handsObj.setOptions({
             maxNumHands: 2,
             modelComplexity: 0,
@@ -672,7 +669,6 @@ def run_streamlit_app():
         tapOverlay.addEventListener('click', startApp);
         document.body.addEventListener('click', startApp);
         window.addEventListener('load', () => {
-          // Coba autoplay
           startApp().catch(() => {
             tapOverlay.style.display = 'flex';
             tapOverlay.style.opacity = '1';
