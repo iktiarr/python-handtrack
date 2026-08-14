@@ -1,6 +1,6 @@
 """
-RETROLENS — High-Performance Pure Camera Filter App (Streamlit & Desktop)
-Clean, Minimalist, 60 FPS, Accurately Aligned 21 Filters
+RETROLENS — Ultra-Clean 1-Page Minimalist Camera Filter App (Streamlit & Desktop)
+No Scrollbar, No FPS, No Bottom Bar, Single Modern Floating Filter Badge, 60 FPS
 """
 
 import sys
@@ -28,30 +28,36 @@ def run_streamlit_app():
         initial_sidebar_state="collapsed"
     )
 
-    # Fullscreen clean layout without any distractions
+    # 100% Zero-scroll lock, full viewport fit
     st.markdown("""
     <style>
     header, footer, #MainMenu, [data-testid="stSidebar"], [data-testid="stToolbar"], .stDeployButton {
         display: none !important;
         visibility: hidden !important;
     }
-    .stApp {
+    html, body, .stApp, .block-container, [data-testid="stAppViewContainer"], [data-testid="stMain"] {
         background-color: #05050a !important;
         margin: 0 !important;
         padding: 0 !important;
-        overflow: hidden !important;
-    }
-    .block-container {
-        padding: 0 !important;
-        margin: 0 auto !important;
+        width: 100vw !important;
+        height: 100vh !important;
         max-width: 100vw !important;
         max-height: 100vh !important;
+        overflow: hidden !important;
+        scrollbar-width: none !important;
+        -ms-overflow-style: none !important;
+    }
+    ::-webkit-scrollbar {
+        display: none !important;
+        width: 0 !important;
+        height: 0 !important;
     }
     iframe {
         border: none !important;
         width: 100vw !important;
         height: 100vh !important;
         display: block !important;
+        overflow: hidden !important;
     }
     </style>
     """, unsafe_allow_html=True)
@@ -66,14 +72,23 @@ def run_streamlit_app():
       <script src="https://cdn.jsdelivr.net/npm/@mediapipe/camera_utils/camera_utils.js" crossorigin="anonymous"></script>
       <script src="https://cdn.jsdelivr.net/npm/@mediapipe/hands/hands.js" crossorigin="anonymous"></script>
       <style>
-        * { box-sizing: border-box; margin: 0; padding: 0; user-select: none; }
+        * {
+          box-sizing: border-box;
+          margin: 0;
+          padding: 0;
+          user-select: none;
+          scrollbar-width: none;
+          -ms-overflow-style: none;
+        }
+        ::-webkit-scrollbar { display: none; width: 0; height: 0; }
+        
         html, body {
           background: #05050a;
           color: #f1f5f9;
           font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
           width: 100vw;
           height: 100vh;
-          overflow: hidden;
+          overflow: hidden !important;
           display: flex;
           align-items: center;
           justify-content: center;
@@ -81,22 +96,20 @@ def run_streamlit_app():
 
         #stage {
           position: relative;
-          width: 100%;
-          height: 100%;
+          width: 100vw;
+          height: 100vh;
           display: flex;
           align-items: center;
           justify-content: center;
-          background: #000;
+          background: #05050a;
+          overflow: hidden;
         }
 
         #output_canvas {
-          max-width: 100vw;
-          max-height: 100vh;
-          aspect-ratio: 16 / 9;
-          width: 100%;
-          height: auto;
-          object-fit: contain;
-          box-shadow: 0 0 50px rgba(0, 0, 0, 0.9);
+          width: 100vw;
+          height: 100vh;
+          object-fit: cover;
+          display: block;
         }
 
         #webcam {
@@ -106,7 +119,7 @@ def run_streamlit_app():
         #tap-overlay {
           position: absolute;
           inset: 0;
-          background: rgba(5, 5, 10, 0.88);
+          background: rgba(5, 5, 10, 0.92);
           display: flex;
           flex-direction: column;
           align-items: center;
@@ -118,14 +131,18 @@ def run_streamlit_app():
         #tap-overlay .glow-btn {
           background: linear-gradient(135deg, #00e5a0 0%, #00a5ff 100%);
           color: #05050a;
-          padding: 16px 36px;
+          padding: 18px 40px;
           border-radius: 50px;
-          font-size: 18px;
+          font-size: 19px;
           font-weight: 800;
-          box-shadow: 0 0 30px rgba(0, 229, 160, 0.4);
+          box-shadow: 0 0 35px rgba(0, 229, 160, 0.45);
           letter-spacing: 0.5px;
           border: none;
           cursor: pointer;
+          transition: transform 0.2s ease;
+        }
+        #tap-overlay .glow-btn:hover {
+          transform: scale(1.05);
         }
         #tap-overlay .hint {
           color: #64748b;
@@ -140,8 +157,8 @@ def run_streamlit_app():
         <canvas id="output_canvas" width="960" height="540"></canvas>
 
         <div id="tap-overlay">
-          <button class="glow-btn">▶ BUKA KAMERA</button>
-          <div class="hint">Klik di mana saja untuk mengaktifkan RETROLENS</div>
+          <button class="glow-btn">▶ BUKA RETROLENS</button>
+          <div class="hint">Klik untuk mengaktifkan kamera</div>
         </div>
       </div>
 
@@ -173,7 +190,6 @@ def run_streamlit_app():
         const ctx = canvas.getContext('2d', { alpha: false });
         const tapOverlay = document.getElementById('tap-overlay');
 
-        // Offscreen buffers
         const offCanvas = document.createElement('canvas');
         const offCtx = offCanvas.getContext('2d', { willReadFrequently: true });
         const miniCanvas = document.createElement('canvas');
@@ -183,8 +199,6 @@ def run_streamlit_app():
         let gestureTriggered = false;
         let cameraRunning = false;
         let isProcessing = false;
-        let fps = 30;
-        let lastTime = performance.now();
 
         function rgbToHex(rgb) {
           return `rgb(${rgb[0]}, ${rgb[1]}, ${rgb[2]})`;
@@ -199,12 +213,11 @@ def run_streamlit_app():
           ctx.fillText(text, x, y);
         }
 
-        // Apply filter directly from the already-mirrored screen canvas for 100% accurate alignment
+        // Fast Filter Engine
         function applyFilterAccurate(filterName, rx, ry, rw, rh) {
           offCanvas.width = rw;
           offCanvas.height = rh;
 
-          // MIRROR filter: Flip the portal area horizontally
           if (filterName === "MIRROR") {
             offCtx.save();
             offCtx.translate(rw, 0);
@@ -214,7 +227,6 @@ def run_streamlit_app():
             return offCanvas;
           }
 
-          // Native Canvas Filters (Fast 60fps)
           if (filterName === "BLUR") {
             offCtx.filter = 'blur(12px)';
             offCtx.drawImage(canvas, rx, ry, rw, rh, 0, 0, rw, rh);
@@ -254,7 +266,6 @@ def run_streamlit_app():
             return offCanvas;
           }
 
-          // Sample exact mirrored frame from screen
           offCtx.drawImage(canvas, rx, ry, rw, rh, 0, 0, rw, rh);
           let imgData = offCtx.getImageData(0, 0, rw, rh);
           let d = imgData.data;
@@ -264,9 +275,9 @@ def run_streamlit_app():
             for (let i = 0; i < len; i += 4) {
               let g = (d[i] + d[i+1] + d[i+2]) / 3;
               if (g > 120) {
-                d[i] = 255; d[i+1] = 150; d[i+2] = 0;   // Vibrant Orange
+                d[i] = 255; d[i+1] = 150; d[i+2] = 0;
               } else {
-                d[i] = 255; d[i+1] = 20; d[i+2] = 160;  // Deep Magenta
+                d[i] = 255; d[i+1] = 20; d[i+2] = 160;
               }
             }
           } else if (filterName === "THERMAL") {
@@ -429,74 +440,40 @@ def run_streamlit_app():
           return offCanvas;
         }
 
-        function drawHUD(w, h, filterName, curIdx, fpsVal) {
+        // Single Modern Floating Badge (No bottom bar, No FPS)
+        function drawMinimalHUD(w, h, filterName, curIdx) {
           const accentRGB = FILTER_COLORS[filterName] || [0, 229, 160];
           const accentColor = rgbToHex(accentRGB);
 
-          // Top bar
-          ctx.fillStyle = 'rgba(5, 5, 12, 0.85)';
-          ctx.fillRect(0, 0, w, 44);
-          ctx.strokeStyle = accentColor;
-          ctx.lineWidth = 2;
+          // Top Floating Pill Badge
+          const badgeW = 260;
+          const badgeH = 38;
+          const badgeX = (w - badgeW) / 2;
+          const badgeY = 16;
+          const radius = 19;
+
+          ctx.save();
+          // Glass pill background
           ctx.beginPath();
-          ctx.moveTo(0, 44);
-          ctx.lineTo(w, 44);
+          ctx.roundRect(badgeX, badgeY, badgeW, badgeH, radius);
+          ctx.fillStyle = 'rgba(10, 10, 20, 0.82)';
+          ctx.fill();
+          ctx.strokeStyle = accentColor;
+          ctx.lineWidth = 1.5;
           ctx.stroke();
 
-          drawTextWithShadow('RETROLENS', 18, 29, 'bold 18px Segoe UI', accentColor);
-
-          let fpsColor = (fpsVal >= 24) ? '#00e5a0' : (fpsVal >= 15 ? '#f59e0b' : '#ef4444');
-          drawTextWithShadow(`FPS ${Math.round(fpsVal)}`, w - 85, 29, 'bold 15px Segoe UI', fpsColor);
-
-          // Bottom Filter Strip
-          const barH = 46;
-          const barTop = h - barH;
-          ctx.fillStyle = 'rgba(5, 5, 12, 0.90)';
-          ctx.fillRect(0, barTop, w, barH);
-          ctx.strokeStyle = accentColor;
-          ctx.beginPath();
-          ctx.moveTo(0, barTop);
-          ctx.lineTo(w, barTop);
-          ctx.stroke();
-
-          drawTextWithShadow(`${curIdx + 1}/${FILTERS.length}`, w - 55, barTop - 8, '12px Segoe UI', '#94a3b8');
-
-          const visible = 9;
-          const half = (visible / 2) | 0;
-          const slotW = w / visible;
-
-          for (let i = 0; i < visible; i++) {
-            let idx = (curIdx - half + i + FILTERS.length * 10) % FILTERS.length;
-            let fname = FILTERS[idx];
-            let isCur = (idx === curIdx);
-            let sx = i * slotW;
-            let scx = sx + slotW / 2;
-            let scy = barTop + barH / 2;
-
-            if (isCur) {
-              ctx.fillStyle = 'rgba(0, 229, 160, 0.18)';
-              ctx.fillRect(sx + 4, barTop + 4, slotW - 8, barH - 8);
-              ctx.strokeStyle = accentColor;
-              ctx.lineWidth = 1.5;
-              ctx.strokeRect(sx + 4, barTop + 4, slotW - 8, barH - 8);
-              drawTextWithShadow(fname, scx, scy + 4, 'bold 13px Segoe UI', accentColor, 'center');
-            } else {
-              drawTextWithShadow(fname, scx, scy + 4, '11px Segoe UI', '#64748b', 'center');
-            }
-          }
+          // Brand & Filter Name in 1 Clean Badge
+          const text = `${curIdx + 1}/${FILTERS.length}  ${filterName}`;
+          drawTextWithShadow(text, w / 2, badgeY + 24, 'bold 15px Segoe UI', accentColor, 'center');
+          ctx.restore();
         }
 
         function onResults(results) {
           isProcessing = false;
-          const now = performance.now();
-          const rawFps = 1000 / Math.max(1, now - lastTime);
-          lastTime = now;
-          fps = fps * 0.85 + rawFps * 0.15;
-
           const w = canvas.width;
           const h = canvas.height;
 
-          // 1. Draw mirrored full camera frame to the main canvas
+          // 1. Draw mirrored full camera frame
           ctx.save();
           ctx.translate(w, 0);
           ctx.scale(-1, 1);
@@ -554,17 +531,17 @@ def run_streamlit_app():
               // Pinky Landmark [20]
               let pkColor = onTrigger ? '#ef4444' : '#c832ff';
               ctx.fillStyle = pkColor;
-              ctx.beginPath(); ctx.arc(pinkyPt.x, pinkyPt.y, 13, 0, Math.PI * 2); ctx.fill();
+              ctx.beginPath(); ctx.arc(pinkyPt.x, pinkyPt.y, 12, 0, Math.PI * 2); ctx.fill();
               ctx.strokeStyle = '#ffffff'; ctx.lineWidth = 1.5;
-              ctx.beginPath(); ctx.arc(pinkyPt.x, pinkyPt.y, 16, 0, Math.PI * 2); ctx.stroke();
+              ctx.beginPath(); ctx.arc(pinkyPt.x, pinkyPt.y, 15, 0, Math.PI * 2); ctx.stroke();
               drawTextWithShadow('P', pinkyPt.x, pinkyPt.y + 4, 'bold 11px Segoe UI', '#ffffff', 'center');
 
               // Thumb [4] & Index [8] Landmarks
               for (let pt of [thumbPt, indexPt]) {
                 ctx.fillStyle = accentColor;
-                ctx.beginPath(); ctx.arc(pt.x, pt.y, 11, 0, Math.PI * 2); ctx.fill();
+                ctx.beginPath(); ctx.arc(pt.x, pt.y, 10, 0, Math.PI * 2); ctx.fill();
                 ctx.strokeStyle = '#ffffff'; ctx.lineWidth = 1.5;
-                ctx.beginPath(); ctx.arc(pt.x, pt.y, 14, 0, Math.PI * 2); ctx.stroke();
+                ctx.beginPath(); ctx.arc(pt.x, pt.y, 13, 0, Math.PI * 2); ctx.stroke();
               }
             }
 
@@ -630,7 +607,7 @@ def run_streamlit_app():
             }
           }
 
-          drawHUD(w, h, filterName, currentFilter, fps);
+          drawMinimalHUD(w, h, filterName, currentFilter);
         }
 
         async function startApp() {
@@ -679,7 +656,7 @@ def run_streamlit_app():
     </html>
     """
 
-    components.html(html_code, height=620, scrolling=False)
+    components.html(html_code, height=720, scrolling=False)
 
 
 def run_desktop_opencv():
@@ -738,8 +715,6 @@ def run_desktop_opencv():
 
     current_filter    = 0
     gesture_triggered = False
-    fps_time = time.time()
-    fps      = 0.0
 
     PINKY_COLOR  = (200,  50, 255)
     PINKY_ACTIVE = (0,    80, 255)
@@ -763,50 +738,22 @@ def run_desktop_opencv():
         cv2.putText(img, text, (x, y), cv2.FONT_HERSHEY_SIMPLEX,
                     scale, color, thickness, cv2.LINE_AA)
 
-    def rect_alpha(img, x1, y1, x2, y2, color, alpha=0.55):
-        x1, y1 = max(0, x1), max(0, y1)
-        x2, y2 = min(img.shape[1], x2), min(img.shape[0], y2)
-        if x2 <= x1 or y2 <= y1:
-            return
-        region = img[y1:y2, x1:x2]
-        bg = np.full_like(region, color)
-        img[y1:y2, x1:x2] = cv2.addWeighted(bg, alpha, region, 1-alpha, 0)
-
-    def draw_hud(img, filter_name, cur_idx, fps_val):
+    def draw_minimal_hud(img, filter_name, cur_idx):
         h, w   = img.shape[:2]
         accent = FILTER_COLORS.get(filter_name, (0, 255, 255))
         total  = len(FILTERS)
 
-        rect_alpha(img, 0, 0, w, 46, (10, 10, 20), alpha=0.78)
-        cv2.line(img, (0, 46), (w, 46), accent, 1)
-        put_text_shadow(img, "RETROLENS", (18, 32), 0.90, accent, 2)
-        fps_color = (0,230,90) if fps_val>=20 else (0,180,255) if fps_val>=10 else (0,80,255)
-        put_text_shadow(img, f"FPS {int(fps_val):>3}", (w-100, 32), 0.58, fps_color, 1)
+        # Single floating top pill
+        bw, bh = 260, 36
+        bx, by = (w - bw) // 2, 14
+        region = img[by:by+bh, bx:bx+bw]
+        bg = np.full_like(region, (10, 10, 20))
+        img[by:by+bh, bx:bx+bw] = cv2.addWeighted(bg, 0.8, region, 0.2, 0)
+        cv2.rectangle(img, (bx, by), (bx+bw, by+bh), accent, 1)
 
-        bar_h   = 46
-        bar_top = h - bar_h
-        rect_alpha(img, 0, bar_top, w, h, (10, 10, 20), alpha=0.80)
-        cv2.line(img, (0, bar_top), (w, bar_top), accent, 1)
-        put_text_shadow(img, f"{cur_idx+1}/{total}", (w-60, bar_top-6), 0.42, (140,140,160), 1)
-
-        visible = 9
-        half    = visible // 2
-        slot_w  = w // visible
-        for i in range(visible):
-            idx    = (cur_idx - half + i) % total
-            fname  = FILTERS[idx]
-            is_cur = (idx == cur_idx)
-            sx     = i * slot_w
-            scx    = sx + slot_w // 2
-            scy    = bar_top + bar_h // 2
-            if is_cur:
-                rect_alpha(img, sx+3, bar_top+3, sx+slot_w-3, h-3, accent, alpha=0.30)
-                cv2.rectangle(img, (sx+3, bar_top+3), (sx+slot_w-3, h-3), accent, 1)
-                color, scale = accent, 0.50
-            else:
-                color, scale = (130, 130, 140), 0.38
-            (tw, th), _ = cv2.getTextSize(fname, cv2.FONT_HERSHEY_SIMPLEX, scale, 1)
-            put_text_shadow(img, fname, (scx - tw//2, scy + th//2), scale, color, 1)
+        text = f"{cur_idx+1}/{total}  {filter_name}"
+        (tw, _), _ = cv2.getTextSize(text, cv2.FONT_HERSHEY_SIMPLEX, 0.55, 1)
+        put_text_shadow(img, text, (bx + (bw - tw)//2, by + 24), 0.55, accent, 2)
 
     def apply_filter(roi, filter_name):
         if roi is None or roi.size == 0:
@@ -910,11 +857,6 @@ def run_desktop_opencv():
             filter_name = FILTERS[current_filter]
             accent      = FILTER_COLORS.get(filter_name, (0, 255, 255))
 
-            now      = time.time()
-            raw_fps  = 1.0 / max(now - fps_time, 1e-6)
-            fps_time = now
-            fps      = fps * 0.85 + raw_fps * 0.15
-
             pts_portal    = []
             change_filter = False
 
@@ -993,7 +935,7 @@ def run_desktop_opencv():
                         ly = max(top_pts[0][1]-14, 60)
                         put_text_shadow(img, f"  {filter_name}", (lx, ly), 0.65, accent, 2)
 
-            draw_hud(img, filter_name, current_filter, fps)
+            draw_minimal_hud(img, filter_name, current_filter)
             cv2.imshow("RETROLENS", img)
             if cv2.waitKey(1) & 0xFF == ord("q"):
                 break
