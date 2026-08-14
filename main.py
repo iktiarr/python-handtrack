@@ -1,8 +1,6 @@
 """
-RETROLENS — Hand Tracking Camera Filter App
-Support dual-mode:
-1. Streamlit Web App (Streamlit Community Cloud / Browser)
-2. Desktop OpenCV App (Local Python Execution)
+RETROLENS — High-Performance Pure Camera Filter App (Streamlit & Desktop)
+Clean, Minimalist, Full-screen & 60 FPS Optimized
 """
 
 import sys
@@ -24,225 +22,132 @@ def run_streamlit_app():
     import streamlit.components.v1 as components
 
     st.set_page_config(
-        page_title="RETROLENS — Hand Tracking Filter Portal",
+        page_title="RETROLENS",
         page_icon="✨",
         layout="wide",
-        initial_sidebar_state="expanded"
+        initial_sidebar_state="collapsed"
     )
 
-    # Custom CSS Styling
+    # Hide all Streamlit UI for a pure, clean camera screen
     st.markdown("""
     <style>
+    header, footer, #MainMenu, [data-testid="stSidebar"], [data-testid="stToolbar"], .stDeployButton {
+        display: none !important;
+        visibility: hidden !important;
+    }
     .stApp {
-        background-color: #0a0a14;
-        color: #f8fafc;
+        background-color: #05050a !important;
+        margin: 0 !important;
+        padding: 0 !important;
+        overflow: hidden !important;
     }
-    header, footer {visibility: hidden;}
     .block-container {
-        padding-top: 1rem;
-        padding-bottom: 1rem;
-        max-width: 1200px;
+        padding: 0 !important;
+        margin: 0 auto !important;
+        max-width: 100vw !important;
+        max-height: 100vh !important;
     }
-    .custom-title {
-        font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
-        font-size: 2.2rem;
-        font-weight: 800;
-        background: linear-gradient(135deg, #00e5a0 0%, #00a5ff 50%, #7c3aed 100%);
-        -webkit-background-clip: text;
-        -webkit-text-fill-color: transparent;
-        margin-bottom: 0.2rem;
-    }
-    .custom-sub {
-        color: #94a3b8;
-        font-size: 0.95rem;
-        margin-bottom: 1rem;
+    iframe {
+        border: none !important;
+        width: 100vw !important;
+        height: 100vh !important;
+        display: block !important;
     }
     </style>
     """, unsafe_allow_html=True)
-
-    with st.sidebar:
-        st.markdown("<h2 style='color:#00e5a0;'>✨ RETROLENS</h2>", unsafe_allow_html=True)
-        st.caption("AI Hand Tracking & Camera Portal (21 Filter)")
-        st.markdown("---")
-
-        st.markdown("### 🎮 Panduan Gestur Tangan")
-        st.markdown("""
-        - 🖐️ **Buka Portal**: Angkat **kedua tangan** (jempol & telunjuk) untuk membuat area portal filter persegi!
-        - 🤙 **Ganti Filter (1 Tangan)**: Dekatkan **Jempol + Kelingking [P]** hingga menyentuh.
-        - 👆 **Ganti Filter (2 Tangan)**: Sentuhkan **kedua jari telunjuk**.
-        """)
-        st.markdown("---")
-
-        st.markdown("### 🎨 21 Filter Visual")
-        st.markdown("""
-        `MONO` `DUAL-TONE` `PIXELATE` `INVERT` `SEPIA`
-        `BLUR` `THERMAL` `SKETCH` `GLITCH` `NEON`
-        `GALAXY` `VINTAGE` `CARTOON` `EMBOSS` `NIGHT`
-        `OCEAN` `FIRE` `RAINBOW` `MIRROR` `VIGNETTE` `OIL`
-        """)
-        st.markdown("---")
-        st.info("💡 **Privasi Terjamin**: Kamera & AI MediaPipe diproses 100% di browser Anda (Client-Side) tanpa latency server!")
-
-    st.markdown("<div class='custom-title'>✨ RETROLENS</div>", unsafe_allow_html=True)
-    st.markdown("<div class='custom-sub'>Aplikasi Hand Tracking & 21 Filter Kamera Interaktif Real-Time</div>", unsafe_allow_html=True)
 
     html_code = """
     <!DOCTYPE html>
     <html lang="id">
     <head>
       <meta charset="UTF-8" />
-      <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+      <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no"/>
       <title>RetroLens</title>
       <script src="https://cdn.jsdelivr.net/npm/@mediapipe/camera_utils/camera_utils.js" crossorigin="anonymous"></script>
       <script src="https://cdn.jsdelivr.net/npm/@mediapipe/hands/hands.js" crossorigin="anonymous"></script>
       <style>
-        * { box-sizing: border-box; margin: 0; padding: 0; }
-        body {
-          background: #0a0a14;
+        * { box-sizing: border-box; margin: 0; padding: 0; user-select: none; }
+        html, body {
+          background: #05050a;
           color: #f1f5f9;
           font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
-          display: flex;
-          flex-direction: column;
-          align-items: center;
-          justify-content: flex-start;
+          width: 100vw;
+          height: 100vh;
           overflow: hidden;
-          padding: 8px;
+          display: flex;
+          align-items: center;
+          justify-content: center;
         }
 
-        #container {
+        #stage {
           position: relative;
-          width: 960px;
-          max-width: 100%;
-          border-radius: 14px;
-          overflow: hidden;
-          box-shadow: 0 10px 30px rgba(0, 0, 0, 0.8), 0 0 20px rgba(0, 229, 160, 0.15);
-          border: 1px solid rgba(255, 255, 255, 0.1);
-          background: #111122;
+          width: 100%;
+          height: 100%;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          background: #000;
         }
 
         #output_canvas {
-          display: block;
+          max-width: 100vw;
+          max-height: 100vh;
+          aspect-ratio: 16 / 9;
           width: 100%;
           height: auto;
-          aspect-ratio: 16 / 9;
-          background: #05050c;
+          object-fit: contain;
+          box-shadow: 0 0 50px rgba(0, 0, 0, 0.9);
         }
 
         #webcam {
           display: none;
         }
 
-        #overlay-bar {
-          display: flex;
-          justify-content: space-between;
-          align-items: center;
-          width: 960px;
-          max-width: 100%;
-          margin-top: 10px;
-          gap: 10px;
-          flex-wrap: wrap;
-        }
-
-        .btn {
-          background: #1e1e38;
-          color: #f8fafc;
-          border: 1px solid rgba(255, 255, 255, 0.15);
-          padding: 8px 16px;
-          border-radius: 8px;
-          font-size: 13px;
-          font-weight: 600;
-          cursor: pointer;
-          transition: all 0.2s ease;
-          display: inline-flex;
-          align-items: center;
-          gap: 6px;
-        }
-        .btn:hover {
-          background: #2a2a4e;
-          border-color: #00e5a0;
-          color: #00e5a0;
-        }
-        .btn-primary {
-          background: #00e5a0;
-          color: #0a0a14;
-          border-color: #00e5a0;
-        }
-        .btn-primary:hover {
-          background: #00c98c;
-          color: #0a0a14;
-        }
-        .btn-danger {
-          background: #ef4444;
-          color: #fff;
-          border-color: #ef4444;
-        }
-        .btn-danger:hover {
-          background: #dc2626;
-        }
-
-        #status-card {
-          font-size: 13px;
-          color: #94a3b8;
-          display: flex;
-          align-items: center;
-          gap: 8px;
-        }
-        .status-dot {
-          width: 10px;
-          height: 10px;
-          border-radius: 50%;
-          background: #00e5a0;
-          box-shadow: 0 0 8px #00e5a0;
-        }
-
-        #start-overlay {
+        /* Overlay jika kamera perlu diaktifkan */
+        #tap-overlay {
           position: absolute;
           inset: 0;
-          background: rgba(10, 10, 20, 0.92);
+          background: rgba(5, 5, 10, 0.88);
           display: flex;
           flex-direction: column;
           align-items: center;
           justify-content: center;
-          z-index: 50;
-          gap: 14px;
+          z-index: 100;
+          cursor: pointer;
+          transition: opacity 0.3s ease;
         }
-        #start-overlay h3 {
-          font-size: 20px;
-          font-weight: 700;
-          color: #00e5a0;
+        #tap-overlay .glow-btn {
+          background: linear-gradient(135deg, #00e5a0 0%, #00a5ff 100%);
+          color: #05050a;
+          padding: 16px 36px;
+          border-radius: 50px;
+          font-size: 18px;
+          font-weight: 800;
+          box-shadow: 0 0 30px rgba(0, 229, 160, 0.4);
+          letter-spacing: 0.5px;
+          border: none;
+          cursor: pointer;
+          transform: scale(1);
+          transition: transform 0.2s ease;
         }
-        #start-overlay p {
-          color: #94a3b8;
+        #tap-overlay .glow-btn:hover {
+          transform: scale(1.06);
+        }
+        #tap-overlay .hint {
+          color: #64748b;
           font-size: 13px;
-          max-width: 400px;
-          text-align: center;
+          margin-top: 14px;
         }
       </style>
     </head>
     <body>
-      <div id="container">
+      <div id="stage">
         <video id="webcam" playsinline></video>
         <canvas id="output_canvas" width="960" height="540"></canvas>
 
-        <div id="start-overlay">
-          <h3>✨ Siap Menggunakan RETROLENS?</h3>
-          <p>Izinkan akses webcam pada browser Anda untuk memulai deteksi gestur tangan dan 21 filter.</p>
-          <button id="btn-start" class="btn btn-primary" style="padding: 12px 24px; font-size: 15px;">
-            ▶ Aktifkan Kamera & Mulai
-          </button>
-        </div>
-      </div>
-
-      <div id="overlay-bar">
-        <div id="status-card">
-          <span id="stat-dot" class="status-dot"></span>
-          <span id="stat-text">Menunggu izin kamera...</span>
-        </div>
-
-        <div style="display: flex; gap: 8px;">
-          <button id="btn-prev" class="btn">◀ Filter Sebelumnya</button>
-          <button id="btn-next" class="btn">Filter Berikutnya ▶</button>
-          <button id="btn-toggle" class="btn btn-danger">Hentikan Kamera</button>
+        <div id="tap-overlay">
+          <button class="glow-btn">▶ BUKA KAMERA</button>
+          <div class="hint">Klik di mana saja untuk mengaktifkan RETROLENS</div>
         </div>
       </div>
 
@@ -271,24 +176,20 @@ def run_streamlit_app():
 
         const video = document.getElementById('webcam');
         const canvas = document.getElementById('output_canvas');
-        const ctx = canvas.getContext('2d', { willReadFrequently: true });
-        const startOverlay = document.getElementById('start-overlay');
-        const btnStart = document.getElementById('btn-start');
-        const btnToggle = document.getElementById('btn-toggle');
-        const btnNext = document.getElementById('btn-next');
-        const btnPrev = document.getElementById('btn-prev');
-        const statDot = document.getElementById('stat-dot');
-        const statText = document.getElementById('stat-text');
+        const ctx = canvas.getContext('2d', { alpha: false });
+        const tapOverlay = document.getElementById('tap-overlay');
 
+        // Offscreen canvas untuk fast filter processing
         const offCanvas = document.createElement('canvas');
         const offCtx = offCanvas.getContext('2d', { willReadFrequently: true });
+        const miniCanvas = document.createElement('canvas');
+        const miniCtx = miniCanvas.getContext('2d', { willReadFrequently: true });
 
         let currentFilter = 0;
         let gestureTriggered = false;
         let cameraRunning = false;
-        let cameraObj = null;
-        let handsObj = null;
-        let fps = 0;
+        let isProcessing = false;
+        let fps = 30;
         let lastTime = performance.now();
 
         function rgbToHex(rgb) {
@@ -304,7 +205,8 @@ def run_streamlit_app():
           ctx.fillText(text, x, y);
         }
 
-        function applyFilter(filterName, rx, ry, rw, rh) {
+        // Fast Filter Engine (High FPS)
+        function applyFilterFast(filterName, rx, ry, rw, rh) {
           offCanvas.width = rw;
           offCanvas.height = rh;
 
@@ -317,87 +219,99 @@ def run_streamlit_app():
             return offCanvas;
           }
 
+          if (filterName === "BLUR") {
+            offCtx.filter = 'blur(10px)';
+            offCtx.drawImage(video, rx, ry, rw, rh, 0, 0, rw, rh);
+            offCtx.filter = 'none';
+            return offCanvas;
+          }
+
+          if (filterName === "MONO") {
+            offCtx.filter = 'grayscale(100%)';
+            offCtx.drawImage(video, rx, ry, rw, rh, 0, 0, rw, rh);
+            offCtx.filter = 'none';
+            return offCanvas;
+          }
+
+          if (filterName === "INVERT") {
+            offCtx.filter = 'invert(100%)';
+            offCtx.drawImage(video, rx, ry, rw, rh, 0, 0, rw, rh);
+            offCtx.filter = 'none';
+            return offCanvas;
+          }
+
+          if (filterName === "SEPIA") {
+            offCtx.filter = 'sepia(100%)';
+            offCtx.drawImage(video, rx, ry, rw, rh, 0, 0, rw, rh);
+            offCtx.filter = 'none';
+            return offCanvas;
+          }
+
+          if (filterName === "PIXELATE") {
+            let pw = Math.max(1, Math.floor(rw / 12));
+            let ph = Math.max(1, Math.floor(rh / 12));
+            miniCanvas.width = pw; miniCanvas.height = ph;
+            miniCtx.drawImage(video, rx, ry, rw, rh, 0, 0, pw, ph);
+            offCtx.imageSmoothingEnabled = false;
+            offCtx.drawImage(miniCanvas, 0, 0, pw, ph, 0, 0, rw, rh);
+            offCtx.imageSmoothingEnabled = true;
+            return offCanvas;
+          }
+
           offCtx.drawImage(video, rx, ry, rw, rh, 0, 0, rw, rh);
           let imgData = offCtx.getImageData(0, 0, rw, rh);
           let d = imgData.data;
+          let len = d.length;
 
-          if (filterName === "MONO") {
-            for (let i = 0; i < d.length; i += 4) {
-              let g = 0.299 * d[i] + 0.587 * d[i+1] + 0.114 * d[i+2];
-              d[i] = d[i+1] = d[i+2] = g;
-            }
-          } else if (filterName === "INVERT") {
-            for (let i = 0; i < d.length; i += 4) {
-              d[i] = 255 - d[i]; d[i+1] = 255 - d[i+1]; d[i+2] = 255 - d[i+2];
-            }
-          } else if (filterName === "SEPIA") {
-            for (let i = 0; i < d.length; i += 4) {
-              let r = d[i], g = d[i+1], b = d[i+2];
-              d[i]   = Math.min(255, 0.393*r + 0.769*g + 0.189*b);
-              d[i+1] = Math.min(255, 0.349*r + 0.686*g + 0.168*b);
-              d[i+2] = Math.min(255, 0.272*r + 0.534*g + 0.131*b);
-            }
-          } else if (filterName === "DUAL-TONE") {
-            for (let i = 0; i < d.length; i += 4) {
-              let g = (d[i] + d[i+1] + d[i+2]) / 3;
-              if (g > 127) {
+          if (filterName === "DUAL-TONE") {
+            for (let i = 0; i < len; i += 4) {
+              let g = (d[i] + d[i+1] + d[i+2]) >> 2;
+              if (g > 32) {
                 d[i] = 255; d[i+1] = 165; d[i+2] = 0;
               } else {
                 d[i] = 255; d[i+1] = 20; d[i+2] = 147;
               }
             }
-          } else if (filterName === "PIXELATE") {
-            let pw = Math.max(1, Math.floor(rw / 12));
-            let ph = Math.max(1, Math.floor(rh / 12));
-            let tempC = document.createElement('canvas');
-            tempC.width = pw; tempC.height = ph;
-            let tempCtx = tempC.getContext('2d');
-            tempCtx.drawImage(video, rx, ry, rw, rh, 0, 0, pw, ph);
-            offCtx.imageSmoothingEnabled = false;
-            offCtx.drawImage(tempC, 0, 0, pw, ph, 0, 0, rw, rh);
-            offCtx.imageSmoothingEnabled = true;
-            return offCanvas;
-          } else if (filterName === "BLUR") {
-            offCtx.filter = 'blur(10px)';
-            offCtx.drawImage(video, rx, ry, rw, rh, 0, 0, rw, rh);
-            offCtx.filter = 'none';
-            return offCanvas;
           } else if (filterName === "THERMAL") {
-            for (let i = 0; i < d.length; i += 4) {
-              let v = (d[i] + d[i+1] + d[i+2]) / (3 * 255);
+            for (let i = 0; i < len; i += 4) {
+              let v = (d[i] + d[i+1] + d[i+2]) / 765;
               d[i]   = Math.min(255, Math.max(0, 255 * (1.5 - Math.abs(4 * v - 3))));
               d[i+1] = Math.min(255, Math.max(0, 255 * (1.5 - Math.abs(4 * v - 2))));
               d[i+2] = Math.min(255, Math.max(0, 255 * (1.5 - Math.abs(4 * v - 1))));
             }
           } else if (filterName === "SKETCH") {
-            for (let y = 0; y < rh - 1; y++) {
-              for (let x = 0; x < rw - 1; x++) {
-                let idx = (y * rw + x) * 4;
-                let next = ((y + 1) * rw + (x + 1)) * 4;
+            for (let y = 0; y < rh - 1; y += 2) {
+              for (let x = 0; x < rw - 1; x += 2) {
+                let idx = (y * rw + x) << 2;
+                let next = ((y + 1) * rw + (x + 1)) << 2;
                 let g1 = (d[idx] + d[idx+1] + d[idx+2]) / 3;
                 let g2 = (d[next] + d[next+1] + d[next+2]) / 3;
                 let diff = 255 - Math.min(255, Math.abs(g1 - g2) * 6);
                 d[idx] = d[idx+1] = d[idx+2] = diff;
+                d[idx+4] = d[idx+5] = d[idx+6] = diff;
               }
             }
           } else if (filterName === "GLITCH") {
-            let shift = Math.max(5, Math.floor(rw / 20));
+            let shift = Math.max(5, (rw / 18) | 0);
             let copy = new Uint8ClampedArray(d);
             for (let y = 0; y < rh; y++) {
+              let row = (y * rw) << 2;
               for (let x = 0; x < rw; x++) {
-                let idx = (y * rw + x) * 4;
-                let rxIdx = (y * rw + Math.min(rw - 1, x + shift)) * 4;
-                let bxIdx = (y * rw + Math.max(0, x - shift)) * 4;
+                let idx = row + (x << 2);
+                let rxIdx = row + (Math.min(rw - 1, x + shift) << 2);
+                let bxIdx = row + (Math.max(0, x - shift) << 2);
                 d[idx] = copy[rxIdx];
                 d[idx+2] = copy[bxIdx+2];
               }
             }
           } else if (filterName === "NEON") {
             for (let y = 0; y < rh - 1; y++) {
+              let row = (y * rw) << 2;
+              let nextRow = ((y + 1) * rw) << 2;
               for (let x = 0; x < rw - 1; x++) {
-                let idx = (y * rw + x) * 4;
-                let right = (y * rw + x + 1) * 4;
-                let down = ((y + 1) * rw + x) * 4;
+                let idx = row + (x << 2);
+                let right = row + ((x + 1) << 2);
+                let down = nextRow + (x << 2);
                 let g = (d[idx] + d[idx+1] + d[idx+2]) / 3;
                 let gr = (d[right] + d[right+1] + d[right+2]) / 3;
                 let gd = (d[down] + d[down+1] + d[down+2]) / 3;
@@ -410,12 +324,12 @@ def run_streamlit_app():
               }
             }
           } else if (filterName === "GALAXY") {
-            offCtx.fillStyle = "#160a28";
+            offCtx.fillStyle = "#140a22";
             offCtx.fillRect(0, 0, rw, rh);
-            for (let i = 0; i < 50; i++) {
-              let sx = (Math.sin(i * 45 + Date.now() * 0.001) * 0.5 + 0.5) * rw;
-              let sy = (Math.cos(i * 25 + Date.now() * 0.001) * 0.5 + 0.5) * rh;
-              offCtx.fillStyle = (i % 2 === 0) ? "#c864ff" : "#ffffff";
+            for (let i = 0; i < 40; i++) {
+              let sx = ((Math.sin(i * 45 + Date.now() * 0.001) * 0.5 + 0.5) * rw) | 0;
+              let sy = ((Math.cos(i * 25 + Date.now() * 0.001) * 0.5 + 0.5) * rh) | 0;
+              offCtx.fillStyle = (i % 2 === 0) ? "#c864ff" : "#00e5a0";
               offCtx.beginPath();
               offCtx.arc(sx, sy, (i % 3) + 1, 0, Math.PI * 2);
               offCtx.fill();
@@ -425,49 +339,36 @@ def run_streamlit_app():
             offCtx.globalAlpha = 1.0;
             return offCanvas;
           } else if (filterName === "VINTAGE") {
-            let cx = rw / 2, cy = rh / 2;
+            let cx = rw >> 1, cy = rh >> 1;
             let maxD = Math.hypot(cx, cy) + 1e-6;
             for (let y = 0; y < rh; y++) {
+              let row = (y * rw) << 2;
               for (let x = 0; x < rw; x++) {
-                let idx = (y * rw + x) * 4;
+                let idx = row + (x << 2);
                 let r = d[idx], g = d[idx+1], b = d[idx+2];
-                let sr = 0.393*r + 0.769*g + 0.189*b;
-                let sg = 0.349*r + 0.686*g + 0.168*b;
-                let sb = 0.272*r + 0.534*g + 0.131*b;
                 let dist = Math.hypot(x - cx, y - cy);
                 let vig = Math.max(0, 1 - Math.pow(dist / maxD, 1.5));
-                let grain = (Math.random() - 0.5) * 20;
-                d[idx]   = Math.min(255, Math.max(0, sr * vig + grain));
-                d[idx+1] = Math.min(255, Math.max(0, sg * vig + grain));
-                d[idx+2] = Math.min(255, Math.max(0, sb * vig + grain));
+                d[idx]   = Math.min(255, (0.393*r + 0.769*g + 0.189*b) * vig);
+                d[idx+1] = Math.min(255, (0.349*r + 0.686*g + 0.168*b) * vig);
+                d[idx+2] = Math.min(255, (0.272*r + 0.534*g + 0.131*b) * vig);
               }
             }
           } else if (filterName === "CARTOON") {
-            for (let y = 0; y < rh - 1; y++) {
-              for (let x = 0; x < rw - 1; x++) {
-                let idx = (y * rw + x) * 4;
-                let right = (y * rw + x + 1) * 4;
-                let down = ((y + 1) * rw + x) * 4;
-                let g = (d[idx] + d[idx+1] + d[idx+2]) / 3;
-                let gr = (d[right] + d[right+1] + d[right+2]) / 3;
-                let gd = (d[down] + d[down+1] + d[down+2]) / 3;
-                let edge = Math.hypot(gr - g, gd - g);
-                if (edge > 25) {
-                  d[idx] = d[idx+1] = d[idx+2] = 0;
-                } else {
-                  d[idx]   = Math.floor(d[idx] / 64) * 64 + 32;
-                  d[idx+1] = Math.floor(d[idx+1] / 64) * 64 + 32;
-                  d[idx+2] = Math.floor(d[idx+2] / 64) * 64 + 32;
-                }
-              }
+            for (let i = 0; i < len; i += 4) {
+              d[i]   = (d[i] >> 6) * 64 + 32;
+              d[i+1] = (d[i+1] >> 6) * 64 + 32;
+              d[i+2] = (d[i+2] >> 6) * 64 + 32;
             }
           } else if (filterName === "EMBOSS") {
             let copy = new Uint8ClampedArray(d);
             for (let y = 1; y < rh - 1; y++) {
+              let row = (y * rw) << 2;
+              let pRow = ((y - 1) * rw) << 2;
+              let nRow = ((y + 1) * rw) << 2;
               for (let x = 1; x < rw - 1; x++) {
-                let idx = (y * rw + x) * 4;
-                let pTL = ((y - 1) * rw + (x - 1)) * 4;
-                let pBR = ((y + 1) * rw + (x + 1)) * 4;
+                let idx = row + (x << 2);
+                let pTL = pRow + ((x - 1) << 2);
+                let pBR = nRow + ((x + 1) << 2);
                 let gTL = (copy[pTL] + copy[pTL+1] + copy[pTL+2]) / 3;
                 let gBR = (copy[pBR] + copy[pBR+1] + copy[pBR+2]) / 3;
                 let val = Math.min(255, Math.max(0, (gBR - gTL) * 1.5 + 128));
@@ -475,18 +376,18 @@ def run_streamlit_app():
               }
             }
           } else if (filterName === "NIGHT") {
-            for (let i = 0; i < d.length; i += 4) {
+            for (let i = 0; i < len; i += 4) {
               let g = (d[i] + d[i+1] + d[i+2]) / 3;
               d[i] = 0; d[i+1] = Math.min(255, g * 1.8 + 20); d[i+2] = 0;
             }
           } else if (filterName === "OCEAN") {
-            for (let i = 0; i < d.length; i += 4) {
-              d[i]   = Math.floor(d[i] * 0.35);
-              d[i+1] = Math.floor(d[i+1] * 0.85);
-              d[i+2] = Math.min(255, Math.floor(d[i+2] * 1.45));
+            for (let i = 0; i < len; i += 4) {
+              d[i]   = (d[i] * 0.35) | 0;
+              d[i+1] = (d[i+1] * 0.85) | 0;
+              d[i+2] = Math.min(255, (d[i+2] * 1.45) | 0);
             }
           } else if (filterName === "FIRE") {
-            for (let i = 0; i < d.length; i += 4) {
+            for (let i = 0; i < len; i += 4) {
               let g = (d[i] + d[i+1] + d[i+2]) / 3;
               d[i]   = Math.min(255, g * 3);
               d[i+1] = Math.min(255, Math.max(0, (g - 85) * 3));
@@ -494,8 +395,9 @@ def run_streamlit_app():
             }
           } else if (filterName === "RAINBOW") {
             for (let y = 0; y < rh; y++) {
+              let row = (y * rw) << 2;
               for (let x = 0; x < rw; x++) {
-                let idx = (y * rw + x) * 4;
+                let idx = row + (x << 2);
                 let g = (d[idx] + d[idx+1] + d[idx+2]) / 3;
                 let angle = (x / rw) * 6.28;
                 d[idx]   = Math.min(255, g * 0.5 + Math.sin(angle) * 120 + 120);
@@ -504,23 +406,24 @@ def run_streamlit_app():
               }
             }
           } else if (filterName === "VIGNETTE") {
-            let cx = rw / 2, cy = rh / 2;
+            let cx = rw >> 1, cy = rh >> 1;
             let maxD = Math.hypot(cx, cy) + 1e-6;
             for (let y = 0; y < rh; y++) {
+              let row = (y * rw) << 2;
               for (let x = 0; x < rw; x++) {
-                let idx = (y * rw + x) * 4;
+                let idx = row + (x << 2);
                 let dist = Math.hypot(x - cx, y - cy);
                 let vig = Math.max(0, 1 - Math.pow(dist / maxD, 1.8));
-                d[idx]   = Math.floor(d[idx] * vig);
-                d[idx+1] = Math.floor(d[idx+1] * vig);
-                d[idx+2] = Math.floor(d[idx+2] * vig);
+                d[idx]   = (d[idx] * vig) | 0;
+                d[idx+1] = (d[idx+1] * vig) | 0;
+                d[idx+2] = (d[idx+2] * vig) | 0;
               }
             }
           } else if (filterName === "OIL") {
-            for (let i = 0; i < d.length; i += 4) {
-              d[i]   = Math.floor(d[i] / 40) * 40;
-              d[i+1] = Math.floor(d[i+1] / 40) * 40;
-              d[i+2] = Math.floor(d[i+2] / 40) * 40;
+            for (let i = 0; i < len; i += 4) {
+              d[i]   = ((d[i] / 40) | 0) * 40;
+              d[i+1] = ((d[i+1] / 40) | 0) * 40;
+              d[i+2] = ((d[i+2] / 40) | 0) * 40;
             }
           }
 
@@ -533,24 +436,24 @@ def run_streamlit_app():
           const accentColor = rgbToHex(accentRGB);
 
           // Top bar
-          ctx.fillStyle = 'rgba(10, 10, 20, 0.85)';
-          ctx.fillRect(0, 0, w, 46);
+          ctx.fillStyle = 'rgba(5, 5, 12, 0.85)';
+          ctx.fillRect(0, 0, w, 44);
           ctx.strokeStyle = accentColor;
           ctx.lineWidth = 2;
           ctx.beginPath();
-          ctx.moveTo(0, 46);
-          ctx.lineTo(w, 46);
+          ctx.moveTo(0, 44);
+          ctx.lineTo(w, 44);
           ctx.stroke();
 
-          drawTextWithShadow('RETROLENS', 18, 30, 'bold 18px Segoe UI', accentColor);
+          drawTextWithShadow('RETROLENS', 18, 29, 'bold 18px Segoe UI', accentColor);
 
-          let fpsColor = (fpsVal >= 20) ? '#00e5a0' : (fpsVal >= 10 ? '#f59e0b' : '#ef4444');
-          drawTextWithShadow(`FPS ${Math.round(fpsVal)}`, w - 90, 30, 'bold 15px Segoe UI', fpsColor);
+          let fpsColor = (fpsVal >= 24) ? '#00e5a0' : (fpsVal >= 15 ? '#f59e0b' : '#ef4444');
+          drawTextWithShadow(`FPS ${Math.round(fpsVal)}`, w - 85, 29, 'bold 15px Segoe UI', fpsColor);
 
           // Bottom Filter Strip
           const barH = 46;
           const barTop = h - barH;
-          ctx.fillStyle = 'rgba(10, 10, 20, 0.88)';
+          ctx.fillStyle = 'rgba(5, 5, 12, 0.90)';
           ctx.fillRect(0, barTop, w, barH);
           ctx.strokeStyle = accentColor;
           ctx.beginPath();
@@ -561,7 +464,7 @@ def run_streamlit_app():
           drawTextWithShadow(`${curIdx + 1}/${FILTERS.length}`, w - 55, barTop - 8, '12px Segoe UI', '#94a3b8');
 
           const visible = 9;
-          const half = Math.floor(visible / 2);
+          const half = (visible / 2) | 0;
           const slotW = w / visible;
 
           for (let i = 0; i < visible; i++) {
@@ -586,6 +489,7 @@ def run_streamlit_app():
         }
 
         function onResults(results) {
+          isProcessing = false;
           const now = performance.now();
           const rawFps = 1000 / Math.max(1, now - lastTime);
           lastTime = now;
@@ -683,15 +587,15 @@ def run_streamlit_app():
               let botPts = ptsPortal.slice(2, 4).sort((a, b) => a.x - b.x);
               let poly = [topPts[0], topPts[1], botPts[1], botPts[0]];
 
-              let minX = Math.max(0, Math.min(...poly.map(p => p.x)));
-              let maxX = Math.min(w, Math.max(...poly.map(p => p.x)));
-              let minY = Math.max(0, Math.min(...poly.map(p => p.y)));
-              let maxY = Math.min(h, Math.max(...poly.map(p => p.y)));
+              let minX = Math.max(0, Math.min(...poly.map(p => p.x))) | 0;
+              let maxX = Math.min(w, Math.max(...poly.map(p => p.x))) | 0;
+              let minY = Math.max(0, Math.min(...poly.map(p => p.y))) | 0;
+              let maxY = Math.min(h, Math.max(...poly.map(p => p.y))) | 0;
               let rw = maxX - minX;
               let rh = maxY - minY;
 
               if (rw > 20 && rh > 20) {
-                let filteredCanvas = applyFilter(filterName, minX, minY, rw, rh);
+                let filteredCanvas = applyFilterFast(filterName, minX, minY, rw, rh);
 
                 ctx.save();
                 ctx.beginPath();
@@ -712,10 +616,9 @@ def run_streamlit_app():
                 ctx.closePath();
                 ctx.stroke();
 
-                // Particles
                 for (let i = 0; i < 4; i++) {
                   let p1 = poly[i], p2 = poly[(i+1)%4];
-                  for (let j = 0; j < 4; j++) {
+                  for (let j = 0; j < 3; j++) {
                     let a = Math.random();
                     let gx = p1.x * a + p2.x * (1 - a) + (Math.random() - 0.5) * 16;
                     let gy = p1.y * a + p2.y * (1 - a) + (Math.random() - 0.5) * 16;
@@ -732,95 +635,55 @@ def run_streamlit_app():
           drawHUD(w, h, filterName, currentFilter, fps);
         }
 
-        async function initCamera() {
-          try {
-            statDot.style.background = '#f59e0b';
-            statDot.style.boxShadow = '0 0 8px #f59e0b';
-            statText.textContent = 'Memuat model AI MediaPipe...';
+        async function startApp() {
+          if (cameraRunning) return;
+          tapOverlay.style.opacity = '0';
+          setTimeout(() => { tapOverlay.style.display = 'none'; }, 300);
 
-            handsObj = new Hands({
-              locateFile: (file) => `https://cdn.jsdelivr.net/npm/@mediapipe/hands/${file}`
-            });
+          const handsObj = new Hands({
+            locateFile: (file) => `https://cdn.jsdelivr.net/npm/@mediapipe/hands/${file}`
+          });
 
-            handsObj.setOptions({
-              maxNumHands: 2,
-              modelComplexity: 1,
-              minDetectionConfidence: 0.4,
-              minTrackingConfidence: 0.4
-            });
+          // Lite model = 60 FPS in browser!
+          handsObj.setOptions({
+            maxNumHands: 2,
+            modelComplexity: 0,
+            minDetectionConfidence: 0.5,
+            minTrackingConfidence: 0.5
+          });
 
-            handsObj.onResults(onResults);
+          handsObj.onResults(onResults);
 
-            cameraObj = new Camera(video, {
-              onFrame: async () => {
-                if (cameraRunning) {
-                  await handsObj.send({ image: video });
-                }
-              },
-              width: 960,
-              height: 540
-            });
+          const cameraObj = new Camera(video, {
+            onFrame: async () => {
+              if (!isProcessing) {
+                isProcessing = true;
+                await handsObj.send({ image: video });
+              }
+            },
+            width: 640,
+            height: 360
+          });
 
-            await cameraObj.start();
-            cameraRunning = true;
-            startOverlay.style.display = 'none';
-            btnToggle.textContent = 'Hentikan Kamera';
-            btnToggle.className = 'btn btn-danger';
-            statDot.style.background = '#00e5a0';
-            statDot.style.boxShadow = '0 0 8px #00e5a0';
-            statText.textContent = '🟢 Kamera Aktif — Deteksi Gestur Berjalan';
-          } catch (err) {
-            console.error(err);
-            statDot.style.background = '#ef4444';
-            statDot.style.boxShadow = '0 0 8px #ef4444';
-            statText.textContent = '❌ Izin webcam ditolak atau kamera tidak ditemukan.';
-            startOverlay.style.display = 'flex';
-          }
+          await cameraObj.start();
+          cameraRunning = true;
         }
 
-        function stopCamera() {
-          cameraRunning = false;
-          if (video.srcObject) {
-            video.srcObject.getTracks().forEach(track => track.stop());
-            video.srcObject = null;
-          }
-          startOverlay.style.display = 'flex';
-          btnToggle.textContent = 'Mulai Kamera';
-          btnToggle.className = 'btn btn-primary';
-          statDot.style.background = '#64748b';
-          statDot.style.boxShadow = 'none';
-          statText.textContent = 'Kamera dijeda.';
-        }
-
-        btnStart.addEventListener('click', () => {
-          initCamera();
-        });
-
-        btnToggle.addEventListener('click', () => {
-          if (cameraRunning) {
-            stopCamera();
-          } else {
-            initCamera();
-          }
-        });
-
-        btnNext.addEventListener('click', () => {
-          currentFilter = (currentFilter + 1) % FILTERS.length;
-        });
-
-        btnPrev.addEventListener('click', () => {
-          currentFilter = (currentFilter - 1 + FILTERS.length) % FILTERS.length;
-        });
-
+        tapOverlay.addEventListener('click', startApp);
+        document.body.addEventListener('click', startApp);
         window.addEventListener('load', () => {
-          initCamera();
+          // Coba autoplay
+          startApp().catch(() => {
+            tapOverlay.style.display = 'flex';
+            tapOverlay.style.opacity = '1';
+          });
         });
       </script>
     </body>
     </html>
     """
 
-    components.html(html_code, height=660, scrolling=False)
+    components.html(html_code, height=620, scrolling=False)
 
 
 def run_desktop_opencv():
