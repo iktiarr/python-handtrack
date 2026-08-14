@@ -1,5 +1,30 @@
+# Python
 venv/
 __pycache__/
 *.pyc
+*.pyo
+*.pyd
+.Python
 .env
+.venv
+
+# Build
+dist/
+build/
+*.spec
+*.egg-info/
+
+# IDE
+.vscode/
+.idea/
+*.suo
+*.user
+
+# OS
 .DS_Store
+Thumbs.db
+desktop.ini
+
+# Model files terlalu besar bisa pakai Git LFS
+# hand_landmarker.task
+# selfie_segmenter.tflite
