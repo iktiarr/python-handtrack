@@ -445,26 +445,26 @@ def run_streamlit_app():
           const accentRGB = FILTER_COLORS[filterName] || [0, 229, 160];
           const accentColor = rgbToHex(accentRGB);
 
-          // Top Floating Pill Badge
-          const badgeW = 260;
-          const badgeH = 38;
+          // Top Floating Pill Badge (Positioned safely below top edge)
+          const badgeW = 270;
+          const badgeH = 42;
           const badgeX = (w - badgeW) / 2;
-          const badgeY = 16;
-          const radius = 19;
+          const badgeY = 46;
+          const radius = 21;
 
           ctx.save();
           // Glass pill background
           ctx.beginPath();
           ctx.roundRect(badgeX, badgeY, badgeW, badgeH, radius);
-          ctx.fillStyle = 'rgba(10, 10, 20, 0.82)';
+          ctx.fillStyle = 'rgba(10, 10, 20, 0.88)';
           ctx.fill();
           ctx.strokeStyle = accentColor;
-          ctx.lineWidth = 1.5;
+          ctx.lineWidth = 1.8;
           ctx.stroke();
 
           // Brand & Filter Name in 1 Clean Badge
-          const text = `${curIdx + 1}/${FILTERS.length}  ${filterName}`;
-          drawTextWithShadow(text, w / 2, badgeY + 24, 'bold 15px Segoe UI', accentColor, 'center');
+          const text = `${curIdx + 1}/${FILTERS.length}   ${filterName}`;
+          drawTextWithShadow(text, w / 2, badgeY + 27, 'bold 16px Segoe UI', accentColor, 'center');
           ctx.restore();
         }
 
@@ -744,16 +744,16 @@ def run_desktop_opencv():
         total  = len(FILTERS)
 
         # Single floating top pill
-        bw, bh = 260, 36
-        bx, by = (w - bw) // 2, 14
+        bw, bh = 270, 40
+        bx, by = (w - bw) // 2, 42
         region = img[by:by+bh, bx:bx+bw]
         bg = np.full_like(region, (10, 10, 20))
         img[by:by+bh, bx:bx+bw] = cv2.addWeighted(bg, 0.8, region, 0.2, 0)
         cv2.rectangle(img, (bx, by), (bx+bw, by+bh), accent, 1)
 
-        text = f"{cur_idx+1}/{total}  {filter_name}"
+        text = f"{cur_idx+1}/{total}   {filter_name}"
         (tw, _), _ = cv2.getTextSize(text, cv2.FONT_HERSHEY_SIMPLEX, 0.55, 1)
-        put_text_shadow(img, text, (bx + (bw - tw)//2, by + 24), 0.55, accent, 2)
+        put_text_shadow(img, text, (bx + (bw - tw)//2, by + 27), 0.55, accent, 2)
 
     def apply_filter(roi, filter_name):
         if roi is None or roi.size == 0:
