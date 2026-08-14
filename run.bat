@@ -32,20 +32,12 @@ if not exist "venv\" (
     )
 )
 
-REM Install dependencies
+REM Install dependencies lokal
 echo  [2/3] Menginstal / memperbarui dependencies...
 call venv\Scripts\activate.bat
-pip install -r requirements.txt -q --disable-pip-version-check
-if errorlevel 1 (
-    echo  [ERROR] Gagal menginstal dependencies.
-    pause
-    exit /b 1
-)
+pip install streamlit opencv-python mediapipe numpy -q --disable-pip-version-check
 
 REM Jalankan launcher
 echo  [3/3] Menjalankan RETROLENS Launcher...
 echo.
-pythonw launcher.py 2>nul
-if errorlevel 1 (
-    python launcher.py
-)
+python launcher.py
