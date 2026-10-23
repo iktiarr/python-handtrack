@@ -744,6 +744,19 @@ HTML_PAGE = r"""<!DOCTYPE html>
           <div class="switch-handle"></div>
         </div>
       </div>
+
+      <!-- Opsi Koreksi Warna Mobile -->
+      <div class="fd-divider"></div>
+
+      <div class="fd-fullscreen-toggle" id="color-fix-toggle" role="button" tabindex="0" title="Klik untuk menukar warna merah dan biru jika kamera mobile tampak biru">
+        <div class="toggle-info">
+          <span class="toggle-title">Koreksi Kamera HP</span>
+          <span class="toggle-sub" id="color-fix-sub">Fix Warna Biru: Nonaktif</span>
+        </div>
+        <div class="toggle-switch" id="color-fix-switch">
+          <div class="switch-handle"></div>
+        </div>
+      </div>
     </div>
   </aside>
 
@@ -769,8 +782,11 @@ HTML_PAGE = r"""<!DOCTYPE html>
 // FILTER REGISTRY
 // ─────────────────────────────────────────────
 const FILTERS = [
-  { name: "NORMAL",      color: [200, 200, 200] },
-  { name: "MONO",        color: [180, 180, 180] },
+  { name: "NORMAL",       color: [200, 200, 200] },
+  { name: "WARNA ASLI",   color: [255, 175, 130] }, // Fix Kamera Mobile (Tukar R ↔ B)
+  { name: "NATURAL WARM", color: [255, 195, 120] }, // Anti-Dingin/Biru Alami
+  { name: "ANTI-BIRU",    color: [255, 150, 150] }, // Kalibrasi Warna Seimbang
+  { name: "MONO",         color: [180, 180, 180] },
   { name: "SEPIA",       color: [225, 145,  60] },
   { name: "VINTAGE",     color: [215, 160,  85] },
   { name: "INVERT",      color: [255,  80, 220] },
@@ -902,6 +918,8 @@ const prevFilterBtn    = document.getElementById('prev-filter-btn');
 const nextFilterBtn    = document.getElementById('next-filter-btn');
 const fullscreenToggle = document.getElementById('fullscreen-toggle');
 const toggleSub        = document.getElementById('toggle-sub');
+const colorFixToggle   = document.getElementById('color-fix-toggle');
+const colorFixSub      = document.getElementById('color-fix-sub');
 const errToast         = document.getElementById('err-toast');
 const ppTitle          = permPrompt ? permPrompt.querySelector('.pp-title') : null;
 const ppSub            = permPrompt ? permPrompt.querySelector('.pp-sub') : null;
@@ -929,6 +947,7 @@ const HAND_CONNECTIONS = [
 // ─────────────────────────────────────────────
 let curFilter        = 0;
 let filterMode       = 'PORTAL'; // 'PORTAL' or 'FULL'
+let mobileColorFix   = false;
 let gestureTriggered = false;
 let camRunning       = false;
 let processing       = false;
@@ -952,6 +971,19 @@ function toggleFilterDock(show) {
   } else {
     filterDock.classList.remove('open');
     if (filterToggleBtn) filterToggleBtn.classList.remove('active');
+  }
+}
+
+function setColorFix(active) {
+  mobileColorFix = (active !== undefined) ? active : !mobileColorFix;
+  if (colorFixToggle) {
+    if (mobileColorFix) {
+      colorFixToggle.classList.add('active');
+      if (colorFixSub) colorFixSub.textContent = 'Fix Warna Biru: Aktif (R↔B)';
+    } else {
+      colorFixToggle.classList.remove('active');
+      if (colorFixSub) colorFixSub.textContent = 'Fix Warna Biru: Nonaktif';
+    }
   }
 }
 
@@ -1051,6 +1083,35 @@ function applyFilter(name, sx, sy, sw, sh) {
 
   if (name === 'NORMAL') {
     return offC;
+  }
+
+  // ── WARNA ASLI (Koreksi BGR ↔ RGB untuk kamera mobile yang membiru / memerah) ──
+  else if (name === 'WARNA ASLI') {
+    if (!mobileColorFix) {
+      for (let i = 0; i < len; i += 4) {
+        const r = d[i];
+        d[i]   = d[i+2]; // Blue dipindah ke Red
+        d[i+2] = r;      // Red dipindah ke Blue
+      }
+    }
+  }
+
+  // ── NATURAL WARM (Menghilangkan nuansa biru dingin, mengembalikan kehangatan kulit alami) ──
+  else if (name === 'NATURAL WARM') {
+    for (let i = 0; i < len; i += 4) {
+      d[i]   = Math.min(255, (d[i]   * 1.10 + 6) | 0);
+      d[i+1] = Math.min(255, (d[i+1] * 1.02 + 2) | 0);
+      d[i+2] = Math.max(0,   (d[i+2] * 0.84 - 8) | 0);
+    }
+  }
+
+  // ── ANTI-BIRU (Menetralkan warna biru berlebih pada sensor kamera depan) ──
+  else if (name === 'ANTI-BIRU') {
+    for (let i = 0; i < len; i += 4) {
+      d[i]   = Math.min(255, (d[i]   * 1.06 + 4) | 0);
+      d[i+1] = Math.min(255, (d[i+1] * 1.01) | 0);
+      d[i+2] = Math.max(0,   (d[i+2] * 0.78 - 12) | 0);
+    }
   }
 
   // ── THERMAL (Smooth FLIR Ironbow Heatmap) ──
@@ -1553,6 +1614,19 @@ function onResults(results) {
   ctx.drawImage(video, 0, 0, dw, dh);
   ctx.restore();
 
+  // Jika Koreksi Kamera HP aktif, lakukan swap R ↔ B pada feed dasar
+  if (mobileColorFix) {
+    const rawData = ctx.getImageData(0, 0, W, H);
+    const d = rawData.data;
+    const len = d.length;
+    for (let i = 0; i < len; i += 4) {
+      const r = d[i];
+      d[i]   = d[i+2];
+      d[i+2] = r;
+    }
+    ctx.putImageData(rawData, 0, 0);
+  }
+
   const fdata       = FILTERS[curFilter];
   const accentColor = rgb(fdata.color);
   const hands       = results.multiHandLandmarks;
@@ -1943,6 +2017,18 @@ function startRenderLoop() {
       ctx.scale(-1, 1);
       ctx.drawImage(video, 0, 0, dw, dh);
       ctx.restore();
+
+      if (mobileColorFix) {
+        const rawData = ctx.getImageData(0, 0, W, H);
+        const d = rawData.data;
+        const len = d.length;
+        for (let i = 0; i < len; i += 4) {
+          const r = d[i];
+          d[i]   = d[i+2];
+          d[i+2] = r;
+        }
+        ctx.putImageData(rawData, 0, 0);
+      }
     } else {
       // Auto-recover if a send frame got stuck
       if (processing && (Date.now() - lastSendTime > 1200)) {
@@ -2119,6 +2205,13 @@ if (fullscreenToggle) {
     showError(newMode === 'FULL' ? 'Mode Satu Layar Aktif (Sentuh kelingking untuk ganti)' : 'Mode Portal Tangan Aktif (Bentangkan 2 tangan)');
   });
 }
+if (colorFixToggle) {
+  colorFixToggle.addEventListener('click', (e) => {
+    e.stopPropagation();
+    setColorFix(!mobileColorFix);
+    showError(mobileColorFix ? 'Koreksi Kamera HP Aktif (Tukar R↔B)' : 'Koreksi Kamera HP Nonaktif');
+  });
+}
 
 canvas.addEventListener('click', () => {
   nextFilter();
@@ -2136,6 +2229,10 @@ window.addEventListener('keydown', (e) => {
     const newMode = (filterMode === 'PORTAL') ? 'FULL' : 'PORTAL';
     setFilterMode(newMode);
     showError(newMode === 'FULL' ? 'Mode Satu Layar Aktif' : 'Mode Portal Tangan Aktif');
+  } else if (e.code === 'KeyC') {
+    e.preventDefault();
+    setColorFix(!mobileColorFix);
+    showError(mobileColorFix ? 'Koreksi Kamera HP Aktif (Tukar R↔B)' : 'Koreksi Kamera HP Nonaktif');
   } else if (e.code === 'Slash' && e.shiftKey) { // '?' key
     e.preventDefault();
     toggleGuideModal();
@@ -2165,4 +2262,4 @@ async def root():
 
 @app.get("/health")
 async def health():
-    return {"status": "ok", "app": "RETROLENS", "filters": 36}
+    return {"status": "ok", "app": "RETROLENS", "filters": 39}
