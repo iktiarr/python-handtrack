@@ -5,20 +5,26 @@ Clean minimal design, browser-side MediaPipe hand tracking
 
 from fastapi import FastAPI
 from fastapi.responses import HTMLResponse
+from fastapi.middleware.gzip import GZipMiddleware
 
 app = FastAPI(title="RETROLENS")
+app.add_middleware(GZipMiddleware, minimum_size=1000)
 
 HTML_PAGE = r"""<!DOCTYPE html>
 <html lang="id">
 <head>
   <meta charset="UTF-8"/>
   <meta name="viewport" content="width=device-width,initial-scale=1.0,maximum-scale=1.0,user-scalable=no"/>
-  <meta name="description" content="RETROLENS — Real-time hand tracking camera filter app with 36 cinematic filters."/>
+  <meta name="description" content="RETROLENS — Real-time hand tracking camera filter app with 39 cinematic filters."/>
   <title>RETROLENS — Hand Tracking Camera Filter</title>
-  <script src="https://cdn.jsdelivr.net/npm/@mediapipe/camera_utils@0.4.1675466862/camera_utils.js"></script>
-  <script src="https://cdn.jsdelivr.net/npm/@mediapipe/hands@0.4.1675469240/hands.js"></script>
+  <!-- Preconnect to CDNs for fastest network negotiation on mobile -->
+  <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
+  <link rel="dns-prefetch" href="https://cdn.jsdelivr.net">
   <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&family=JetBrains+Mono:wght@500;700&display=swap" rel="stylesheet">
+  <!-- Load MediaPipe asynchronously so it never blocks page rendering -->
+  <script defer src="https://cdn.jsdelivr.net/npm/@mediapipe/hands@0.4.1675469240/hands.js"></script>
   <style>
     *, *::before, *::after {
       box-sizing: border-box; margin: 0; padding: 0;
@@ -190,32 +196,6 @@ HTML_PAGE = r"""<!DOCTYPE html>
       color: #ef4444;
       border-color: rgba(239, 68, 68, 0.6);
       transform: scale(1.08);
-    }
-
-    .fd-done-btn {
-      margin-top: 4px;
-      width: 100%;
-      height: 36px;
-      border-radius: 12px;
-      background: rgba(255, 255, 255, 0.08);
-      border: 1px solid rgba(255, 255, 255, 0.16);
-      color: #cbd5e1;
-      font-family: 'JetBrains Mono', monospace;
-      font-size: 11px;
-      font-weight: 700;
-      letter-spacing: 0.5px;
-      cursor: pointer;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      gap: 6px;
-      transition: all 0.2s ease;
-    }
-    .fd-done-btn:hover, .fd-done-btn:active {
-      background: rgba(0, 229, 160, 0.18);
-      border-color: #00e5a0;
-      color: #00e5a0;
-      transform: scale(1.02);
     }
 
     /* Hide floating toggle button when dock is open so it NEVER obstructs buttons! */
@@ -849,7 +829,7 @@ HTML_PAGE = r"""<!DOCTYPE html>
       <div class="fd-top">
         <div style="display:flex; align-items:center; gap:8px;">
           <span class="fd-label">FILTER AKTIF</span>
-          <span class="fd-counter" id="filter-counter">01 / 36</span>
+          <span class="fd-counter" id="filter-counter">01 / 39</span>
         </div>
         <button id="close-filter-btn" class="panel-close-btn" title="Tutup Panel Filter (✕)">✕</button>
       </div>
@@ -888,10 +868,6 @@ HTML_PAGE = r"""<!DOCTYPE html>
           <div class="switch-handle"></div>
         </div>
       </div>
-
-      <!-- Tombol Tutup / Selesai -->
-      <div class="fd-divider"></div>
-      <button id="dock-done-btn" class="fd-done-btn" title="Tutup Panel Filter">TUTUP PANEL (✕)</button>
     </div>
   </aside>
 
@@ -1212,7 +1188,7 @@ function showPrompt(title, sub, icon = '&#128247;') {
 // Returns an ImageData or OffscreenCanvas to blit
 // ─────────────────────────────────────────────
 function applyFilter(name, sx, sy, sw, sh) {
-  if (sw < 2 || sh < 2) return null;
+  if (!name || name === 'NORMAL' || sw < 2 || sh < 2) return null;
 
   offC.width  = sw;
   offC.height = sh;
@@ -2202,20 +2178,22 @@ async function startCamera() {
 // ─────────────────────────────────────────────
 function triggerHandDetection() {
   if (!handsInstance || !handsReady || isDetecting) return;
-  if (!video || video.readyState < 2) return;
+  if (!video || video.readyState < 2 || video.paused || video.ended) return;
 
   const now = performance.now();
-  // Throttle AI detection to ~30 FPS on mobile / 50 FPS on desktop
+  // Throttle AI detection to ~28 FPS on mobile / 50 FPS on desktop
   // This keeps the 60 FPS render loop silky smooth with plenty of CPU/GPU headroom!
-  const minInterval = isMobileDevice ? 32 : 20;
+  const minInterval = isMobileDevice ? 36 : 20;
   if (now - lastDetectTime < minInterval) return;
 
   isDetecting = true;
   lastDetectTime = now;
 
-  handsInstance.send({ image: video }).catch(() => {
-    isDetecting = false;
-  });
+  handsInstance.send({ image: video })
+    .catch(() => {})
+    .finally(() => {
+      isDetecting = false;
+    });
 }
 
 function startRenderLoop() {
@@ -2268,6 +2246,17 @@ async function initMediaPipeHands() {
     handsInstance.onResults((results) => {
       onResults(results);
     });
+
+    // Asynchronously initialize WASM in background so 60 FPS camera loop never hitches or freezes
+    if (typeof handsInstance.initialize === 'function') {
+      try {
+        await handsInstance.initialize();
+      } catch (e) {
+        console.warn('handsInstance.initialize warning:', e);
+      }
+    } else {
+      await new Promise(r => setTimeout(r, 600));
+    }
     handsReady = true;
     hideLoading();
   } catch (err) {
@@ -2380,14 +2369,6 @@ if (closeFilterBtn) {
   });
 }
 
-const dockDoneBtn = document.getElementById('dock-done-btn');
-if (dockDoneBtn) {
-  dockDoneBtn.addEventListener('click', (e) => {
-    e.stopPropagation();
-    toggleFilterDock(false);
-  });
-}
-
 // Prevent click inside panels from triggering canvas nextFilter or closing
 if (filterDock) {
   filterDock.addEventListener('click', (e) => {
@@ -2483,7 +2464,11 @@ window.addEventListener('keydown', (e) => {
 // ─────────────────────────────────────────────
 // AUTO-START & RETRY
 // ─────────────────────────────────────────────
-window.addEventListener('load', startApp);
+if (document.readyState === 'loading') {
+  document.addEventListener('DOMContentLoaded', startApp);
+} else {
+  startApp();
+}
 retryBtn.addEventListener('click', () => {
   camRunning = false;
   startApp();
@@ -2495,7 +2480,14 @@ retryBtn.addEventListener('click', () => {
 
 @app.get("/", response_class=HTMLResponse)
 async def root():
-    return HTMLResponse(content=HTML_PAGE)
+    return HTMLResponse(
+        content=HTML_PAGE,
+        headers={
+            "Cache-Control": "no-cache, no-store, must-revalidate",
+            "Pragma": "no-cache",
+            "Expires": "0",
+        }
+    )
 
 
 @app.get("/health")
