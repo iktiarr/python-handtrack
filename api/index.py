@@ -80,7 +80,7 @@ HTML_PAGE = r"""<!DOCTYPE html>
       bottom: 24px; left: 24px;
       width: 44px; height: 44px;
       border-radius: 50%;
-      display: none;
+      display: flex;
       align-items: center; justify-content: center;
       font-family: 'JetBrains Mono', monospace;
       font-size: 19px;
@@ -97,20 +97,45 @@ HTML_PAGE = r"""<!DOCTYPE html>
     #filter-toggle-btn {
       top: 50%; right: 24px;
       transform: translateY(-50%);
-      height: 42px;
-      padding: 0 15px;
+      height: 44px;
+      padding: 0 8px 0 10px;
       border-radius: 100px;
-      display: none;
+      display: flex;
       align-items: center;
-      gap: 9px;
+      gap: 7px;
     }
     #filter-toggle-btn:hover {
-      transform: translateY(-50%) scale(1.05);
+      transform: translateY(-50%) scale(1.04);
     }
     #filter-toggle-btn.active {
       background: rgba(0, 229, 160, 0.18);
       border-color: #00e5a0;
       box-shadow: 0 0 16px rgba(0, 229, 160, 0.35);
+    }
+    .ftb-arrow-btn {
+      background: rgba(255, 255, 255, 0.08);
+      border: 1px solid rgba(255, 255, 255, 0.12);
+      border-radius: 50%;
+      width: 26px; height: 26px;
+      color: rgba(255, 255, 255, 0.85);
+      font-size: 10px;
+      display: flex;
+      align-items: center; justify-content: center;
+      cursor: pointer;
+      transition: all 0.2s;
+      flex-shrink: 0;
+    }
+    .ftb-arrow-btn:hover {
+      background: rgba(0, 229, 160, 0.2);
+      border-color: #00e5a0;
+      color: #00e5a0;
+    }
+    .ftb-center-area {
+      display: flex;
+      align-items: center;
+      gap: 7px;
+      cursor: pointer;
+      padding: 0 4px;
     }
     .ftb-dot {
       width: 9px; height: 9px;
@@ -507,35 +532,48 @@ HTML_PAGE = r"""<!DOCTYPE html>
     /* ── Mobile Responsive Layout ─────────────── */
     @media (max-width: 680px) {
       #guide-toggle-btn {
-        bottom: 18px; left: 16px;
-        width: 44px; height: 44px;
+        bottom: max(18px, env(safe-area-inset-bottom, 18px));
+        left: max(16px, env(safe-area-inset-left, 16px));
+        width: 46px; height: 46px;
+        font-size: 20px;
+        display: flex !important;
+        z-index: 80;
       }
 
       #filter-toggle-btn {
-        top: auto; bottom: 18px; right: 16px;
+        top: auto;
+        bottom: max(18px, env(safe-area-inset-bottom, 18px));
+        right: max(16px, env(safe-area-inset-right, 16px));
         transform: none;
-        height: 44px;
-        padding: 0 14px;
+        height: 46px;
+        padding: 0 8px;
+        display: flex !important;
+        z-index: 80;
       }
       #filter-toggle-btn:hover {
         transform: scale(1.04);
       }
 
       #gesture-modal {
-        bottom: 74px; left: 16px;
+        bottom: max(72px, calc(env(safe-area-inset-bottom, 0px) + 72px));
+        left: 16px;
         width: calc(100vw - 32px);
         max-width: 360px;
         max-height: 72vh;
         overflow-y: auto;
         padding: 14px;
+        z-index: 90;
       }
 
       #filter-dock {
-        top: auto; bottom: 74px; right: 16px;
+        top: auto;
+        bottom: max(72px, calc(env(safe-area-inset-bottom, 0px) + 72px));
+        right: 16px;
         transform: scale(0.96);
         width: calc(100vw - 32px);
         max-width: 320px;
         padding: 14px;
+        z-index: 90;
       }
       #filter-dock.open {
         transform: scale(1);
@@ -638,17 +676,21 @@ HTML_PAGE = r"""<!DOCTYPE html>
 </head>
 <body>
 <div id="stage">
-  <video id="webcam" playsinline></video>
+  <video id="webcam" playsinline webkit-playsinline autoplay muted></video>
   <canvas id="output_canvas"></canvas>
 
-  <!-- Floating Trigger Buttons -->
+  <!-- Floating Trigger Buttons (Selalu tampil di desktop & mobile) -->
   <button id="guide-toggle-btn" class="floating-btn" title="Panduan Kontrol Gestur (?)">?</button>
 
-  <button id="filter-toggle-btn" class="floating-btn" title="Buka Pengaturan Filter (🎨)">
-    <span class="ftb-dot" id="filter-btn-dot"></span>
-    <span class="ftb-name" id="filter-btn-name">NORMAL</span>
-    <span class="ftb-icon">🎨</span>
-  </button>
+  <div id="filter-toggle-btn" class="floating-btn" title="Kontrol & Pengaturan Filter (🎨)">
+    <button id="main-prev-btn" class="ftb-arrow-btn" title="Filter Sebelumnya (◀)">◀</button>
+    <div id="main-filter-click" class="ftb-center-area" title="Buka Panel Filter (🎨)">
+      <span class="ftb-dot" id="filter-btn-dot"></span>
+      <span class="ftb-name" id="filter-btn-name">NORMAL</span>
+      <span class="ftb-icon">🎨</span>
+    </div>
+    <button id="main-next-btn" class="ftb-arrow-btn" title="Filter Berikutnya (▶)">▶</button>
+  </div>
 
   <!-- Gesture Guide Modal (Default: Hidden, opened via ?) -->
   <aside id="gesture-modal">
@@ -901,6 +943,9 @@ const retryBtn         = document.getElementById('retry-btn');
 // Floating Trigger Buttons
 const guideToggleBtn   = document.getElementById('guide-toggle-btn');
 const filterToggleBtn  = document.getElementById('filter-toggle-btn');
+const mainPrevBtn      = document.getElementById('main-prev-btn');
+const mainNextBtn      = document.getElementById('main-next-btn');
+const mainFilterClick  = document.getElementById('main-filter-click');
 const filterBtnDot     = document.getElementById('filter-btn-dot');
 const filterBtnName    = document.getElementById('filter-btn-name');
 
@@ -1978,9 +2023,19 @@ async function startCamera() {
   }
 
   video.srcObject = stream;
-  await video.play();
+  video.muted = true;
+  video.playsInline = true;
+  video.setAttribute('playsinline', '');
+  video.setAttribute('webkit-playsinline', '');
+  video.setAttribute('muted', '');
+  try {
+    await video.play();
+  } catch(e) {
+    console.warn("video.play() autoplay exception:", e);
+  }
   camRunning = true;
   resizeCanvas();
+  hideLoading();
 
   // Show live UI overlays (hanya tombol ikon ? dan filter 🎨 yang tampil)
   if (guideToggleBtn)  guideToggleBtn.style.display  = 'flex';
@@ -2113,6 +2168,9 @@ async function startApp() {
     // 2. Initialize MediaPipe Hands in parallel
     initMediaPipeHands();
 
+    // Safety timeout: ensure loading screen is hidden after at most 2.5 seconds on mobile
+    setTimeout(hideLoading, 2500);
+
   } catch (err) {
     console.error('Gagal mengakses kamera:', err);
     loadingEl.style.display  = 'none';
@@ -2156,6 +2214,25 @@ if (closeGuideBtn) {
   closeGuideBtn.addEventListener('click', (e) => {
     e.stopPropagation();
     toggleGuideModal(false);
+  });
+}
+
+if (mainPrevBtn) {
+  mainPrevBtn.addEventListener('click', (e) => {
+    e.stopPropagation();
+    prevFilter();
+  });
+}
+if (mainNextBtn) {
+  mainNextBtn.addEventListener('click', (e) => {
+    e.stopPropagation();
+    nextFilter();
+  });
+}
+if (mainFilterClick) {
+  mainFilterClick.addEventListener('click', (e) => {
+    e.stopPropagation();
+    toggleFilterDock();
   });
 }
 
