@@ -28,16 +28,19 @@ HTML_PAGE = r"""<!DOCTYPE html>
     ::-webkit-scrollbar { display: none; }
 
     html, body {
-      width: 100vw; height: 100vh;
+      width: 100%; height: 100%;
+      height: 100dvh;
       overflow: hidden;
+      margin: 0; padding: 0;
       background: #03030a;
       font-family: 'Inter', system-ui, sans-serif;
     }
 
     /* ── Canvas Stage ─────────────────────────── */
     #stage {
-      position: relative;
-      width: 100vw; height: 100vh;
+      position: fixed; inset: 0;
+      width: 100%; height: 100%;
+      height: 100dvh;
       overflow: hidden;
     }
 
@@ -52,18 +55,19 @@ HTML_PAGE = r"""<!DOCTYPE html>
 
     /* ── Floating Trigger Buttons ────────────── */
     .floating-btn {
-      position: absolute;
-      z-index: 60;
-      background: rgba(10, 10, 26, 0.85);
+      position: fixed !important;
+      z-index: 9999 !important;
+      background: rgba(10, 10, 26, 0.88);
       backdrop-filter: blur(24px) saturate(190%);
       -webkit-backdrop-filter: blur(24px) saturate(190%);
-      border: 1px solid rgba(255, 255, 255, 0.14);
-      box-shadow: 0 10px 30px rgba(0, 0, 0, 0.55), inset 0 1px 0 rgba(255, 255, 255, 0.12);
+      border: 1px solid rgba(255, 255, 255, 0.18);
+      box-shadow: 0 10px 30px rgba(0, 0, 0, 0.65), inset 0 1px 0 rgba(255, 255, 255, 0.15);
       color: #fff;
       cursor: pointer;
       transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
       user-select: none;
       -webkit-user-select: none;
+      pointer-events: auto !important;
     }
     .floating-btn:hover {
       border-color: rgba(255, 255, 255, 0.32);
@@ -77,40 +81,78 @@ HTML_PAGE = r"""<!DOCTYPE html>
 
     /* Guide ? button — bottom-left */
     #guide-toggle-btn {
-      bottom: 24px; left: 24px;
-      width: 44px; height: 44px;
+      position: fixed !important;
+      bottom: max(22px, env(safe-area-inset-bottom, 22px)) !important;
+      left: max(16px, env(safe-area-inset-left, 16px)) !important;
+      width: 48px; height: 48px;
       border-radius: 50%;
-      display: flex;
+      display: flex !important;
       align-items: center; justify-content: center;
       font-family: 'JetBrains Mono', monospace;
-      font-size: 19px;
+      font-size: 20px;
       font-weight: 700;
+      z-index: 9999 !important;
     }
     #guide-toggle-btn.active {
-      background: rgba(0, 229, 160, 0.2);
-      border-color: #00e5a0;
-      color: #00e5a0;
-      box-shadow: 0 0 16px rgba(0, 229, 160, 0.35);
+      background: rgba(0, 229, 160, 0.25) !important;
+      border-color: #00e5a0 !important;
+      color: #00e5a0 !important;
+      box-shadow: 0 0 18px rgba(0, 229, 160, 0.45) !important;
     }
 
-    /* Filter pill button — right side */
-    #filter-toggle-btn {
-      top: 50%; right: 24px;
-      transform: translateY(-50%);
+    /* Quick Color Fix button — bottom-center */
+    #color-quick-btn {
+      position: fixed !important;
+      bottom: max(22px, env(safe-area-inset-bottom, 22px)) !important;
+      left: 50% !important;
+      transform: translateX(-50%) !important;
       height: 44px;
-      padding: 0 8px 0 10px;
+      padding: 0 14px;
       border-radius: 100px;
-      display: flex;
+      display: flex !important;
       align-items: center;
       gap: 7px;
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 11.5px;
+      font-weight: 700;
+      letter-spacing: 0.5px;
+      z-index: 9999 !important;
+      white-space: nowrap;
+    }
+    #color-quick-btn.active {
+      background: rgba(0, 229, 160, 0.22) !important;
+      border-color: #00e5a0 !important;
+      color: #00e5a0 !important;
+      box-shadow: 0 0 16px rgba(0, 229, 160, 0.4) !important;
+    }
+    .cqb-dot {
+      width: 8px; height: 8px;
+      border-radius: 50%;
+      background: currentColor;
+      box-shadow: 0 0 8px currentColor;
+      flex-shrink: 0;
+    }
+
+    /* Filter pill button — bottom-right */
+    #filter-toggle-btn {
+      position: fixed !important;
+      bottom: max(22px, env(safe-area-inset-bottom, 22px)) !important;
+      right: max(16px, env(safe-area-inset-right, 16px)) !important;
+      height: 48px;
+      padding: 0 8px 0 10px;
+      border-radius: 100px;
+      display: flex !important;
+      align-items: center;
+      gap: 7px;
+      z-index: 9999 !important;
     }
     #filter-toggle-btn:hover {
-      transform: translateY(-50%) scale(1.04);
+      transform: scale(1.04);
     }
     #filter-toggle-btn.active {
-      background: rgba(0, 229, 160, 0.18);
-      border-color: #00e5a0;
-      box-shadow: 0 0 16px rgba(0, 229, 160, 0.35);
+      background: rgba(0, 229, 160, 0.18) !important;
+      border-color: #00e5a0 !important;
+      box-shadow: 0 0 16px rgba(0, 229, 160, 0.35) !important;
     }
     .ftb-arrow-btn {
       background: rgba(255, 255, 255, 0.08);
@@ -532,59 +574,95 @@ HTML_PAGE = r"""<!DOCTYPE html>
     /* ── Mobile Responsive Layout ─────────────── */
     @media (max-width: 680px) {
       #guide-toggle-btn {
-        bottom: max(18px, env(safe-area-inset-bottom, 18px));
-        left: max(16px, env(safe-area-inset-left, 16px));
-        width: 46px; height: 46px;
-        font-size: 20px;
+        bottom: max(18px, env(safe-area-inset-bottom, 18px)) !important;
+        left: max(10px, env(safe-area-inset-left, 10px)) !important;
+        width: 44px !important;
+        height: 44px !important;
+        font-size: 19px !important;
         display: flex !important;
-        z-index: 80;
+        z-index: 9999 !important;
+      }
+
+      #color-quick-btn {
+        bottom: max(18px, env(safe-area-inset-bottom, 18px)) !important;
+        left: 50% !important;
+        transform: translateX(-50%) !important;
+        height: 44px !important;
+        padding: 0 11px !important;
+        font-size: 11px !important;
+        display: flex !important;
+        z-index: 9999 !important;
       }
 
       #filter-toggle-btn {
-        top: auto;
-        bottom: max(18px, env(safe-area-inset-bottom, 18px));
-        right: max(16px, env(safe-area-inset-right, 16px));
-        transform: none;
-        height: 46px;
-        padding: 0 8px;
+        top: auto !important;
+        bottom: max(18px, env(safe-area-inset-bottom, 18px)) !important;
+        right: max(10px, env(safe-area-inset-right, 10px)) !important;
+        transform: none !important;
+        height: 44px !important;
+        padding: 0 6px 0 8px !important;
         display: flex !important;
-        z-index: 80;
+        z-index: 9999 !important;
       }
       #filter-toggle-btn:hover {
-        transform: scale(1.04);
+        transform: scale(1.04) !important;
+      }
+      .ftb-name {
+        max-width: 68px !important;
+        font-size: 11px !important;
       }
 
       #gesture-modal {
-        bottom: max(72px, calc(env(safe-area-inset-bottom, 0px) + 72px));
-        left: 16px;
-        width: calc(100vw - 32px);
-        max-width: 360px;
-        max-height: 72vh;
-        overflow-y: auto;
-        padding: 14px;
-        z-index: 90;
+        position: fixed !important;
+        bottom: max(72px, calc(env(safe-area-inset-bottom, 0px) + 72px)) !important;
+        left: 10px !important;
+        width: calc(100vw - 20px) !important;
+        max-width: 380px !important;
+        max-height: 75vh !important;
+        overflow-y: auto !important;
+        padding: 14px !important;
+        z-index: 10000 !important;
       }
 
       #filter-dock {
-        top: auto;
-        bottom: max(72px, calc(env(safe-area-inset-bottom, 0px) + 72px));
-        right: 16px;
-        transform: scale(0.96);
-        width: calc(100vw - 32px);
-        max-width: 320px;
-        padding: 14px;
-        z-index: 90;
+        position: fixed !important;
+        top: auto !important;
+        bottom: max(72px, calc(env(safe-area-inset-bottom, 0px) + 72px)) !important;
+        right: 10px !important;
+        transform: scale(0.96) !important;
+        width: calc(100vw - 20px) !important;
+        max-width: 330px !important;
+        padding: 14px !important;
+        z-index: 10000 !important;
       }
       #filter-dock.open {
-        transform: scale(1);
+        transform: scale(1) !important;
       }
-      .fd-name { font-size: 16px; }
+      .fd-name { font-size: 15px !important; }
+    }
+
+    @media (min-width: 681px) {
+      #filter-toggle-btn {
+        top: 50% !important;
+        bottom: auto !important;
+        right: 24px !important;
+        transform: translateY(-50%) !important;
+      }
+      #color-quick-btn {
+        bottom: 24px !important;
+        left: 84px !important;
+        transform: none !important;
+      }
+      #guide-toggle-btn {
+        bottom: 24px !important;
+        left: 24px !important;
+      }
     }
 
     /* ── Loading overlay ─────────────────────── */
     #loading {
-      position: absolute; inset: 0;
-      z-index: 100;
+      position: fixed; inset: 0;
+      z-index: 50;
       background: #03030a;
       display: flex;
       flex-direction: column;
@@ -592,6 +670,7 @@ HTML_PAGE = r"""<!DOCTYPE html>
       justify-content: center;
       gap: 16px;
       transition: opacity 0.4s ease;
+      pointer-events: none;
     }
     #loading .ld-ring {
       width: 40px; height: 40px;
@@ -679,8 +758,13 @@ HTML_PAGE = r"""<!DOCTYPE html>
   <video id="webcam" playsinline webkit-playsinline autoplay muted></video>
   <canvas id="output_canvas"></canvas>
 
-  <!-- Floating Trigger Buttons (Selalu tampil di desktop & mobile) -->
+  <!-- Floating Trigger Buttons (Selalu tampil di desktop & mobile via position: fixed) -->
   <button id="guide-toggle-btn" class="floating-btn" title="Panduan Kontrol Gestur (?)">?</button>
+
+  <button id="color-quick-btn" class="floating-btn" title="Koreksi Warna Kamera (Tukar Merah & Biru)">
+    <span class="cqb-dot"></span>
+    <span id="color-quick-text">Fix Warna: ON</span>
+  </button>
 
   <div id="filter-toggle-btn" class="floating-btn" title="Kontrol & Pengaturan Filter (🎨)">
     <button id="main-prev-btn" class="ftb-arrow-btn" title="Filter Sebelumnya (◀)">◀</button>
@@ -942,6 +1026,8 @@ const retryBtn         = document.getElementById('retry-btn');
 
 // Floating Trigger Buttons
 const guideToggleBtn   = document.getElementById('guide-toggle-btn');
+const colorQuickBtn    = document.getElementById('color-quick-btn');
+const colorQuickText   = document.getElementById('color-quick-text');
 const filterToggleBtn  = document.getElementById('filter-toggle-btn');
 const mainPrevBtn      = document.getElementById('main-prev-btn');
 const mainNextBtn      = document.getElementById('main-next-btn');
@@ -992,7 +1078,9 @@ const HAND_CONNECTIONS = [
 // ─────────────────────────────────────────────
 let curFilter        = 0;
 let filterMode       = 'PORTAL'; // 'PORTAL' or 'FULL'
-let mobileColorFix   = false;
+// Auto-detect Android / Mobile device and activate color fix by default!
+const isMobileDevice = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent) || (window.innerWidth <= 768);
+let mobileColorFix   = isMobileDevice; // TRUE by default on mobile so face is NEVER blue!
 let gestureTriggered = false;
 let camRunning       = false;
 let processing       = false;
@@ -1019,8 +1107,16 @@ function toggleFilterDock(show) {
   }
 }
 
-function setColorFix(active) {
-  mobileColorFix = (active !== undefined) ? active : !mobileColorFix;
+function updateColorFixUI() {
+  if (colorQuickBtn) {
+    if (mobileColorFix) {
+      colorQuickBtn.classList.add('active');
+      if (colorQuickText) colorQuickText.textContent = 'Fix Warna: ON';
+    } else {
+      colorQuickBtn.classList.remove('active');
+      if (colorQuickText) colorQuickText.textContent = 'Fix Warna: OFF';
+    }
+  }
   if (colorFixToggle) {
     if (mobileColorFix) {
       colorFixToggle.classList.add('active');
@@ -1031,6 +1127,12 @@ function setColorFix(active) {
     }
   }
 }
+
+function setColorFix(active) {
+  mobileColorFix = (active !== undefined) ? active : !mobileColorFix;
+  updateColorFixUI();
+}
+updateColorFixUI();
 
 function toggleGuideModal(show) {
   const willOpen = (show !== undefined) ? show : !gestureModal.classList.contains('open');
@@ -2214,6 +2316,14 @@ if (closeGuideBtn) {
   closeGuideBtn.addEventListener('click', (e) => {
     e.stopPropagation();
     toggleGuideModal(false);
+  });
+}
+
+if (colorQuickBtn) {
+  colorQuickBtn.addEventListener('click', (e) => {
+    e.stopPropagation();
+    setColorFix(!mobileColorFix);
+    showError(mobileColorFix ? 'Koreksi Warna Aktif (Tukar R↔B)' : 'Koreksi Warna Nonaktif (Original)');
   });
 }
 
