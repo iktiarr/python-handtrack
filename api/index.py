@@ -172,38 +172,73 @@ HTML_PAGE = r"""<!DOCTYPE html>
 
     /* ── Close button for dock and modal ──────── */
     .panel-close-btn {
-      width: 24px; height: 24px;
+      width: 30px; height: 30px;
       border-radius: 50%;
-      background: rgba(255, 255, 255, 0.08);
-      border: 1px solid rgba(255, 255, 255, 0.12);
-      color: rgba(255, 255, 255, 0.65);
+      background: rgba(255, 255, 255, 0.1);
+      border: 1px solid rgba(255, 255, 255, 0.2);
+      color: rgba(255, 255, 255, 0.85);
       display: flex;
       align-items: center; justify-content: center;
-      font-size: 11px;
+      font-size: 13px;
+      font-weight: 700;
       cursor: pointer;
       transition: all 0.2s;
+      flex-shrink: 0;
     }
-    .panel-close-btn:hover {
-      background: rgba(255, 255, 255, 0.2);
-      color: #fff;
-      border-color: rgba(255, 255, 255, 0.3);
+    .panel-close-btn:hover, .panel-close-btn:active {
+      background: rgba(239, 68, 68, 0.28);
+      color: #ef4444;
+      border-color: rgba(239, 68, 68, 0.6);
+      transform: scale(1.08);
+    }
+
+    .fd-done-btn {
+      margin-top: 4px;
+      width: 100%;
+      height: 36px;
+      border-radius: 12px;
+      background: rgba(255, 255, 255, 0.08);
+      border: 1px solid rgba(255, 255, 255, 0.16);
+      color: #cbd5e1;
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 11px;
+      font-weight: 700;
+      letter-spacing: 0.5px;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
+      transition: all 0.2s ease;
+    }
+    .fd-done-btn:hover, .fd-done-btn:active {
+      background: rgba(0, 229, 160, 0.18);
+      border-color: #00e5a0;
+      color: #00e5a0;
+      transform: scale(1.02);
+    }
+
+    /* Hide floating toggle button when dock is open so it NEVER obstructs buttons! */
+    body.dock-open #filter-toggle-btn {
+      display: none !important;
+      pointer-events: none !important;
     }
 
     /* ── Filter Dock — RIGHT SIDE (COLLAPSIBLE, DEFAULT HIDDEN) ───── */
     #filter-dock {
       position: absolute;
       top: 50%; right: 24px;
-      z-index: 70;
+      z-index: 10000;
       display: none;
       flex-direction: column;
       width: 252px;
-      background: rgba(8, 8, 24, 0.92);
+      background: rgba(8, 8, 24, 0.94);
       backdrop-filter: blur(24px) saturate(190%);
       -webkit-backdrop-filter: blur(24px) saturate(190%);
-      border: 1px solid rgba(255, 255, 255, 0.14);
+      border: 1px solid rgba(255, 255, 255, 0.16);
       border-radius: 20px;
       padding: 16px;
-      box-shadow: 0 20px 48px rgba(0, 0, 0, 0.65), inset 0 1px 0 rgba(255, 255, 255, 0.12);
+      box-shadow: 0 20px 48px rgba(0, 0, 0, 0.75), inset 0 1px 0 rgba(255, 255, 255, 0.15);
       pointer-events: auto;
       user-select: none;
       opacity: 0;
@@ -599,14 +634,25 @@ HTML_PAGE = r"""<!DOCTYPE html>
 
     @media (min-width: 681px) {
       #filter-toggle-btn {
-        top: 50% !important;
-        bottom: auto !important;
+        bottom: 24px !important;
         right: 24px !important;
-        transform: translateY(-50%) !important;
+        top: auto !important;
+        transform: none !important;
       }
       #guide-toggle-btn {
         bottom: 24px !important;
         left: 24px !important;
+      }
+      #filter-dock {
+        position: fixed !important;
+        bottom: 84px !important;
+        right: 24px !important;
+        top: auto !important;
+        transform: scale(0.96) !important;
+        z-index: 10000 !important;
+      }
+      #filter-dock.open {
+        transform: scale(1) !important;
       }
     }
 
@@ -842,6 +888,10 @@ HTML_PAGE = r"""<!DOCTYPE html>
           <div class="switch-handle"></div>
         </div>
       </div>
+
+      <!-- Tombol Tutup / Selesai -->
+      <div class="fd-divider"></div>
+      <button id="dock-done-btn" class="fd-done-btn" title="Tutup Panel Filter">TUTUP PANEL (✕)</button>
     </div>
   </aside>
 
@@ -1071,11 +1121,22 @@ try {
 function toggleFilterDock(show) {
   const willOpen = (show !== undefined) ? show : !filterDock.classList.contains('open');
   if (willOpen) {
+    if (gestureModal) gestureModal.classList.remove('open');
+    if (guideToggleBtn) guideToggleBtn.classList.remove('active');
+    document.body.classList.remove('guide-open');
     filterDock.classList.add('open');
-    if (filterToggleBtn) filterToggleBtn.classList.add('active');
+    document.body.classList.add('dock-open');
+    if (filterToggleBtn) {
+      filterToggleBtn.classList.add('active');
+      filterToggleBtn.style.display = 'none';
+    }
   } else {
     filterDock.classList.remove('open');
-    if (filterToggleBtn) filterToggleBtn.classList.remove('active');
+    document.body.classList.remove('dock-open');
+    if (filterToggleBtn) {
+      filterToggleBtn.classList.remove('active');
+      filterToggleBtn.style.display = 'flex';
+    }
   }
 }
 
@@ -1104,10 +1165,13 @@ updateColorFixUI();
 function toggleGuideModal(show) {
   const willOpen = (show !== undefined) ? show : !gestureModal.classList.contains('open');
   if (willOpen) {
+    toggleFilterDock(false);
     gestureModal.classList.add('open');
+    document.body.classList.add('guide-open');
     if (guideToggleBtn) guideToggleBtn.classList.add('active');
   } else {
     gestureModal.classList.remove('open');
+    document.body.classList.remove('guide-open');
     if (guideToggleBtn) guideToggleBtn.classList.remove('active');
   }
 }
@@ -2297,16 +2361,18 @@ if (mainNextBtn) {
 if (mainFilterClick) {
   mainFilterClick.addEventListener('click', (e) => {
     e.stopPropagation();
-    toggleFilterDock();
+    toggleFilterDock(true);
   });
 }
 
 if (filterToggleBtn) {
   filterToggleBtn.addEventListener('click', (e) => {
+    if (e.target.closest('#main-prev-btn') || e.target.closest('#main-next-btn')) return;
     e.stopPropagation();
-    toggleFilterDock();
+    toggleFilterDock(true);
   });
 }
+
 if (closeFilterBtn) {
   closeFilterBtn.addEventListener('click', (e) => {
     e.stopPropagation();
@@ -2314,7 +2380,15 @@ if (closeFilterBtn) {
   });
 }
 
-// Prevent click inside panels from triggering canvas nextFilter
+const dockDoneBtn = document.getElementById('dock-done-btn');
+if (dockDoneBtn) {
+  dockDoneBtn.addEventListener('click', (e) => {
+    e.stopPropagation();
+    toggleFilterDock(false);
+  });
+}
+
+// Prevent click inside panels from triggering canvas nextFilter or closing
 if (filterDock) {
   filterDock.addEventListener('click', (e) => {
     e.stopPropagation();
@@ -2351,12 +2425,34 @@ if (colorFixToggle) {
   colorFixToggle.addEventListener('click', (e) => {
     e.stopPropagation();
     setColorFix(!mobileColorFix);
-    showError(mobileColorFix ? 'Koreksi Kamera HP Aktif (Tukar R↔B)' : 'Koreksi Kamera HP Nonaktif');
+    showError(mobileColorFix ? 'Fix Warna HP: Aktif (Tukar Merah ↔ Biru)' : 'Fix Warna HP: Nonaktif (Normal)');
   });
 }
 
+// Clicking canvas or outside closes panels if open, otherwise switches filter
 canvas.addEventListener('click', () => {
+  if (filterDock && filterDock.classList.contains('open')) {
+    toggleFilterDock(false);
+    return;
+  }
+  if (gestureModal && gestureModal.classList.contains('open')) {
+    toggleGuideModal(false);
+    return;
+  }
   nextFilter();
+});
+
+document.addEventListener('click', (e) => {
+  if (filterDock && filterDock.classList.contains('open')) {
+    if (!filterDock.contains(e.target) && (!filterToggleBtn || !filterToggleBtn.contains(e.target))) {
+      toggleFilterDock(false);
+    }
+  }
+  if (gestureModal && gestureModal.classList.contains('open')) {
+    if (!gestureModal.contains(e.target) && (!guideToggleBtn || !guideToggleBtn.contains(e.target))) {
+      toggleGuideModal(false);
+    }
+  }
 });
 
 window.addEventListener('keydown', (e) => {
