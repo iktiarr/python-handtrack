@@ -100,39 +100,6 @@ HTML_PAGE = r"""<!DOCTYPE html>
       box-shadow: 0 0 18px rgba(0, 229, 160, 0.45) !important;
     }
 
-    /* Quick Color Fix button — bottom-center */
-    #color-quick-btn {
-      position: fixed !important;
-      bottom: max(22px, env(safe-area-inset-bottom, 22px)) !important;
-      left: 50% !important;
-      transform: translateX(-50%) !important;
-      height: 44px;
-      padding: 0 14px;
-      border-radius: 100px;
-      display: flex !important;
-      align-items: center;
-      gap: 7px;
-      font-family: 'JetBrains Mono', monospace;
-      font-size: 11.5px;
-      font-weight: 700;
-      letter-spacing: 0.5px;
-      z-index: 9999 !important;
-      white-space: nowrap;
-    }
-    #color-quick-btn.active {
-      background: rgba(0, 229, 160, 0.22) !important;
-      border-color: #00e5a0 !important;
-      color: #00e5a0 !important;
-      box-shadow: 0 0 16px rgba(0, 229, 160, 0.4) !important;
-    }
-    .cqb-dot {
-      width: 8px; height: 8px;
-      border-radius: 50%;
-      background: currentColor;
-      box-shadow: 0 0 8px currentColor;
-      flex-shrink: 0;
-    }
-
     /* Filter pill button — bottom-right */
     #filter-toggle-btn {
       position: fixed !important;
@@ -583,17 +550,6 @@ HTML_PAGE = r"""<!DOCTYPE html>
         z-index: 9999 !important;
       }
 
-      #color-quick-btn {
-        bottom: max(18px, env(safe-area-inset-bottom, 18px)) !important;
-        left: 50% !important;
-        transform: translateX(-50%) !important;
-        height: 44px !important;
-        padding: 0 11px !important;
-        font-size: 11px !important;
-        display: flex !important;
-        z-index: 9999 !important;
-      }
-
       #filter-toggle-btn {
         top: auto !important;
         bottom: max(18px, env(safe-area-inset-bottom, 18px)) !important;
@@ -647,11 +603,6 @@ HTML_PAGE = r"""<!DOCTYPE html>
         bottom: auto !important;
         right: 24px !important;
         transform: translateY(-50%) !important;
-      }
-      #color-quick-btn {
-        bottom: 24px !important;
-        left: 84px !important;
-        transform: none !important;
       }
       #guide-toggle-btn {
         bottom: 24px !important;
@@ -758,13 +709,21 @@ HTML_PAGE = r"""<!DOCTYPE html>
   <video id="webcam" playsinline webkit-playsinline autoplay muted></video>
   <canvas id="output_canvas"></canvas>
 
+  <!-- Hardware GPU Color Fix Matrix (Zero CPU overhead) -->
+  <svg id="svg-filters" style="position:fixed;width:0;height:0;top:-9999px;left:-9999px;pointer-events:none;opacity:0;" aria-hidden="true">
+    <defs>
+      <filter id="svg-bgr-fix" color-interpolation-filters="sRGB">
+        <feColorMatrix type="matrix"
+          values="0 0 1 0 0
+                  0 1 0 0 0
+                  1 0 0 0 0
+                  0 0 0 1 0" />
+      </filter>
+    </defs>
+  </svg>
+
   <!-- Floating Trigger Buttons (Selalu tampil di desktop & mobile via position: fixed) -->
   <button id="guide-toggle-btn" class="floating-btn" title="Panduan Kontrol Gestur (?)">?</button>
-
-  <button id="color-quick-btn" class="floating-btn" title="Koreksi Warna Kamera (Tukar Merah & Biru)">
-    <span class="cqb-dot"></span>
-    <span id="color-quick-text">Fix Warna: ON</span>
-  </button>
 
   <div id="filter-toggle-btn" class="floating-btn" title="Kontrol & Pengaturan Filter (🎨)">
     <button id="main-prev-btn" class="ftb-arrow-btn" title="Filter Sebelumnya (◀)">◀</button>
@@ -876,7 +835,7 @@ HTML_PAGE = r"""<!DOCTYPE html>
 
       <div class="fd-fullscreen-toggle" id="color-fix-toggle" role="button" tabindex="0" title="Klik untuk menukar warna merah dan biru jika kamera mobile tampak biru">
         <div class="toggle-info">
-          <span class="toggle-title">Koreksi Kamera HP</span>
+          <span class="toggle-title">Fix Warna Kamera HP</span>
           <span class="toggle-sub" id="color-fix-sub">Fix Warna Biru: Nonaktif</span>
         </div>
         <div class="toggle-switch" id="color-fix-switch">
@@ -1019,15 +978,13 @@ for (let i = 0; i < 256; i++) {
 // ─────────────────────────────────────────────
 const video            = document.getElementById('webcam');
 const canvas           = document.getElementById('output_canvas');
-const ctx              = canvas.getContext('2d', { alpha: false, willReadFrequently: true });
+const ctx              = canvas.getContext('2d', { alpha: false });
 const loadingEl        = document.getElementById('loading');
 const permPrompt       = document.getElementById('perm-prompt');
 const retryBtn         = document.getElementById('retry-btn');
 
-// Floating Trigger Buttons
+// Floating Trigger Buttons (Tampil di desktop & mobile)
 const guideToggleBtn   = document.getElementById('guide-toggle-btn');
-const colorQuickBtn    = document.getElementById('color-quick-btn');
-const colorQuickText   = document.getElementById('color-quick-text');
 const filterToggleBtn  = document.getElementById('filter-toggle-btn');
 const mainPrevBtn      = document.getElementById('main-prev-btn');
 const mainNextBtn      = document.getElementById('main-next-btn');
@@ -1056,7 +1013,7 @@ const ppTitle          = permPrompt ? permPrompt.querySelector('.pp-title') : nu
 const ppSub            = permPrompt ? permPrompt.querySelector('.pp-sub') : null;
 const ppIcon           = permPrompt ? permPrompt.querySelector('.pp-icon') : null;
 
-// Offscreen canvases
+// Offscreen canvases (for filter shaders)
 const offC  = document.createElement('canvas');
 const offX  = offC.getContext('2d', { willReadFrequently: true });
 const miniC = document.createElement('canvas');
@@ -1080,18 +1037,33 @@ let curFilter        = 0;
 let filterMode       = 'PORTAL'; // 'PORTAL' or 'FULL'
 // Auto-detect Android / Mobile device and activate color fix by default!
 const isMobileDevice = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent) || (window.innerWidth <= 768);
-let mobileColorFix   = isMobileDevice; // TRUE by default on mobile so face is NEVER blue!
+let mobileColorFix   = isMobileDevice; // TRUE by default on mobile so camera is never blue!
 let gestureTriggered = false;
 let camRunning       = false;
-let processing       = false;
 let lastAccent       = '#00e5a0';
 let animFrame        = 0;
 let handsInstance    = null;
 let handsReady       = false;
 let stream           = null;
 let animId           = null;
-let lastSendTime     = 0;
 let smoothPoly       = null;
+
+// Decoupled 60 FPS State: Camera renders at native display rate, AI runs in background
+let latestHandsResults = null;
+let interpolatedHands  = [];
+let isDetecting        = false;
+let lastDetectTime     = 0;
+
+// GPU SVG Filter Detection (Swap R <-> B in hardware shader with zero CPU time)
+let canUseCanvasSvgFilter = false;
+try {
+  const testCanvas = document.createElement('canvas');
+  const testCtx = testCanvas.getContext('2d');
+  testCtx.filter = 'url(#svg-bgr-fix)';
+  canUseCanvasSvgFilter = (typeof testCtx.filter === 'string' && testCtx.filter.indexOf('url') !== -1 && testCtx.filter !== 'none');
+} catch(e) {
+  canUseCanvasSvgFilter = false;
+}
 
 // ─────────────────────────────────────────────
 // UI TOGGLE HELPERS
@@ -1108,23 +1080,18 @@ function toggleFilterDock(show) {
 }
 
 function updateColorFixUI() {
-  if (colorQuickBtn) {
-    if (mobileColorFix) {
-      colorQuickBtn.classList.add('active');
-      if (colorQuickText) colorQuickText.textContent = 'Fix Warna: ON';
-    } else {
-      colorQuickBtn.classList.remove('active');
-      if (colorQuickText) colorQuickText.textContent = 'Fix Warna: OFF';
-    }
-  }
   if (colorFixToggle) {
     if (mobileColorFix) {
       colorFixToggle.classList.add('active');
-      if (colorFixSub) colorFixSub.textContent = 'Fix Warna Biru: Aktif (R↔B)';
+      if (colorFixSub) colorFixSub.textContent = 'Fix Warna: Aktif (R↔B)';
     } else {
       colorFixToggle.classList.remove('active');
-      if (colorFixSub) colorFixSub.textContent = 'Fix Warna Biru: Nonaktif';
+      if (colorFixSub) colorFixSub.textContent = 'Fix Warna: Nonaktif';
     }
+  }
+  // GPU fallback for browsers that only apply SVG filters via CSS element style
+  if (!canUseCanvasSvgFilter && canvas) {
+    canvas.style.filter = mobileColorFix ? 'url(#svg-bgr-fix)' : 'none';
   }
 }
 
@@ -1738,10 +1705,18 @@ function setFilterMode(mode) {
 }
 
 // ─────────────────────────────────────────────
-// MEDIAPIPE RESULT HANDLER
+// 60 FPS RENDER ENGINE & HAND TRACKER
 // ─────────────────────────────────────────────
 function onResults(results) {
-  processing = false;
+  latestHandsResults = results;
+  isDetecting = false;
+  if (!handsReady) {
+    handsReady = true;
+    hideLoading();
+  }
+}
+
+function renderFrame() {
   animFrame++;
 
   const W = canvas.width, H = canvas.height;
@@ -1755,31 +1730,24 @@ function onResults(results) {
   const dx = (W - dw) * 0.5;
   const dy = (H - dh) * 0.5;
 
+  // 1. Draw webcam video (mirrored selfie) with 100% GPU Hardware Accelerated Color Fix
   ctx.save();
   ctx.translate(dx + dw, dy);
   ctx.scale(-1, 1);
-  ctx.drawImage(video, 0, 0, dw, dh);
-  ctx.restore();
-
-  // Jika Koreksi Kamera HP aktif, lakukan swap R ↔ B pada feed dasar
-  if (mobileColorFix) {
-    const rawData = ctx.getImageData(0, 0, W, H);
-    const d = rawData.data;
-    const len = d.length;
-    for (let i = 0; i < len; i += 4) {
-      const r = d[i];
-      d[i]   = d[i+2];
-      d[i+2] = r;
-    }
-    ctx.putImageData(rawData, 0, 0);
+  if (mobileColorFix && canUseCanvasSvgFilter) {
+    ctx.filter = 'url(#svg-bgr-fix)';
+  } else {
+    ctx.filter = 'none';
   }
+  ctx.drawImage(video, 0, 0, dw, dh);
+  ctx.filter = 'none';
+  ctx.restore();
 
   const fdata       = FILTERS[curFilter];
   const accentColor = rgb(fdata.color);
-  const hands       = results.multiHandLandmarks;
   const isFull      = (filterMode === 'FULL');
 
-  // 1. If in FULLSCREEN mode: apply filter to the entire canvas!
+  // 2. Fullscreen mode: apply filter to entire canvas
   if (isFull) {
     const fullFiltered = applyFilter(fdata.name, 0, 0, W, H);
     if (fullFiltered) {
@@ -1795,11 +1763,28 @@ function onResults(results) {
     };
   }
 
+  const rawHands = (latestHandsResults && latestHandsResults.multiHandLandmarks) ? latestHandsResults.multiHandLandmarks : null;
+
   let triggerChange = false;
   let isTouching    = false;
   const portalPts   = [];
 
-  if (hands && hands.length > 0) {
+  if (rawHands && rawHands.length > 0) {
+    // Smooth hands with LERP for buttery smooth 60 FPS tracking without jitter
+    if (!interpolatedHands || interpolatedHands.length !== rawHands.length) {
+      interpolatedHands = rawHands.map(hand => hand.map(pt => ({ x: pt.x, y: pt.y })));
+    } else {
+      const lerpSpeed = 0.45;
+      for (let h = 0; h < rawHands.length; h++) {
+        for (let k = 0; k < 21; k++) {
+          interpolatedHands[h][k].x += (rawHands[h][k].x - interpolatedHands[h][k].x) * lerpSpeed;
+          interpolatedHands[h][k].y += (rawHands[h][k].y - interpolatedHands[h][k].y) * lerpSpeed;
+        }
+      }
+    }
+
+    const hands = interpolatedHands;
+
     // ── Two-hand gesture (index tips meet) ──
     if (hands.length >= 2) {
       const p0 = toCanvas(hands[0][8]);
@@ -1915,7 +1900,7 @@ function onResults(results) {
       else giThumb.classList.remove('highlight');
     }
 
-    // ── Debounce filter change ──
+    // Debounce filter change
     if (triggerChange) {
       if (!gestureTriggered) {
         nextFilter();
@@ -2025,6 +2010,7 @@ function onResults(results) {
       }
     }
   } else {
+    interpolatedHands = [];
     smoothPoly = null;
   }
 }
@@ -2147,61 +2133,42 @@ async function startCamera() {
   startRenderLoop();
 }
 
+// ─────────────────────────────────────────────
+// ASYNC BACKGROUND AI HAND DETECTION
+// ─────────────────────────────────────────────
+function triggerHandDetection() {
+  if (!handsInstance || !handsReady || isDetecting) return;
+  if (!video || video.readyState < 2) return;
+
+  const now = performance.now();
+  // Throttle AI detection to ~30 FPS on mobile / 50 FPS on desktop
+  // This keeps the 60 FPS render loop silky smooth with plenty of CPU/GPU headroom!
+  const minInterval = isMobileDevice ? 32 : 20;
+  if (now - lastDetectTime < minInterval) return;
+
+  isDetecting = true;
+  lastDetectTime = now;
+
+  handsInstance.send({ image: video }).catch(() => {
+    isDetecting = false;
+  });
+}
+
 function startRenderLoop() {
   if (animId) cancelAnimationFrame(animId);
 
-  const loop = async () => {
+  const loop = () => {
     if (!camRunning) return;
 
     if (video.videoWidth && (canvas.width !== window.innerWidth || canvas.height !== window.innerHeight)) {
       resizeCanvas();
     }
 
-    // Fallback render if hands AI is loading or unavailable
-    if (!handsInstance || !handsReady) {
-      const W = canvas.width, H = canvas.height;
-      const vw = video.videoWidth || 1280;
-      const vh = video.videoHeight || 720;
+    // 1. Render camera video & filters at solid 60 FPS
+    renderFrame();
 
-      const scale = Math.max(W / vw, H / vh);
-      const dw = vw * scale;
-      const dh = vh * scale;
-      const dx = (W - dw) * 0.5;
-      const dy = (H - dh) * 0.5;
-
-      ctx.save();
-      ctx.translate(dx + dw, dy);
-      ctx.scale(-1, 1);
-      ctx.drawImage(video, 0, 0, dw, dh);
-      ctx.restore();
-
-      if (mobileColorFix) {
-        const rawData = ctx.getImageData(0, 0, W, H);
-        const d = rawData.data;
-        const len = d.length;
-        for (let i = 0; i < len; i += 4) {
-          const r = d[i];
-          d[i]   = d[i+2];
-          d[i+2] = r;
-        }
-        ctx.putImageData(rawData, 0, 0);
-      }
-    } else {
-      // Auto-recover if a send frame got stuck
-      if (processing && (Date.now() - lastSendTime > 1200)) {
-        processing = false;
-      }
-
-      if (!processing && video.readyState >= 2) {
-        processing = true;
-        lastSendTime = Date.now();
-        try {
-          await handsInstance.send({ image: video });
-        } catch(e) {
-          processing = false;
-        }
-      }
-    }
+    // 2. Schedule non-blocking hand detection in background
+    triggerHandDetection();
 
     animId = requestAnimationFrame(loop);
   };
@@ -2230,16 +2197,12 @@ async function initMediaPipeHands() {
     });
     handsInstance.setOptions({
       maxNumHands: 2,
-      modelComplexity: 1,
+      modelComplexity: isMobileDevice ? 0 : 1, // 0 = Lite (3x speedup, lower battery/CPU for mobile)
       minDetectionConfidence: 0.55,
       minTrackingConfidence: 0.5,
     });
     handsInstance.onResults((results) => {
       onResults(results);
-      if (!handsReady) {
-        handsReady = true;
-        hideLoading();
-      }
     });
     handsReady = true;
     hideLoading();
@@ -2316,14 +2279,6 @@ if (closeGuideBtn) {
   closeGuideBtn.addEventListener('click', (e) => {
     e.stopPropagation();
     toggleGuideModal(false);
-  });
-}
-
-if (colorQuickBtn) {
-  colorQuickBtn.addEventListener('click', (e) => {
-    e.stopPropagation();
-    setColorFix(!mobileColorFix);
-    showError(mobileColorFix ? 'Koreksi Warna Aktif (Tukar R↔B)' : 'Koreksi Warna Nonaktif (Original)');
   });
 }
 
